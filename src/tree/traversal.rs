@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use crate::tree::TreeOptions;
+use crate::tree::options::TreeOptions;
 
 pub fn traverse_directory<P: AsRef<Path>>(
     root_path: P,
