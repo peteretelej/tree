@@ -1,0 +1,22 @@
+[package]
+name = "tree"
+version = "0.1.0"
+edition = "2021"
+authors = ["Peter Etelej <peter@etelej.com>"]
+description = """
+tree is a cross-platform tree application and library that produces
+an indented directory listing of files.
+"""
+keywords = ["tree", "cli", "utility"]
+categories = ["command-line-utilities"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+walkdir = "2.3"
+clap = "3.0"
+ansi_term = "0.12"
+term = "0.7"
+
+[dev-dependencies]
+tempfile = "3.2"
