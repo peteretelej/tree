@@ -8,20 +8,18 @@ fn main() {
         .arg(
             Arg::new("all_files")
                 .short('a')
-                .long("all-files")
                 .help("All files are printed. By default tree does not print hidden files."),
         )
         .arg(
             Arg::new("level")
                 .short('L')
-                .long("level")
                 .takes_value(true)
                 .help("Max display depth of the directory tree."),
         )
-        .arg(Arg::new("full_path").short('f').long("full-path").help("Prints the full path prefix for each file."),)
-        .arg(Arg::new("dir_only").short('d').long("dir-only").help("List directories only."),)
-        .arg(Arg::new("no_indent").short('i').long("no-indent").help("Makes tree not print the indentation lines, useful when used in conjunction with the -f option."),)
-        .arg(Arg::new("print_size").short('s').long("print-size").help("Print the size of each file in bytes along with the name."),)
+        .arg(Arg::new("full_path").short('f').help("Prints the full path prefix for each file."),)
+        .arg(Arg::new("dir_only").short('d').help("List directories only."),)
+        .arg(Arg::new("no_indent").short('i').help("Makes tree not print the indentation lines, useful when used in conjunction with the -f option."),)
+        .arg(Arg::new("print_size").short('s').help("Print the size of each file in bytes along with the name."),)
         .get_matches();
 
     let path = matches.value_of("directory").unwrap_or(".");
