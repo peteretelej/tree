@@ -15,7 +15,9 @@ pub fn traverse_directory<P: AsRef<Path>>(
     stats: &mut (u64, u64),
     last_entry_depths: &mut HashSet<usize>,
 ) -> std::io::Result<()> {
-    let entries: Vec<_> = fs::read_dir(current_path)?.collect();
+    let mut entries: Vec<_> = fs::read_dir(current_path)?.collect();
+    entries.sort_by_key(|entry| entry.as_ref().unwrap().file_name().to_owned());
+
     let last_index = entries.len().saturating_sub(1);
 
     for (index, entry) in entries.into_iter().enumerate() {
