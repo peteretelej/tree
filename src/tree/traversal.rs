@@ -40,6 +40,9 @@ pub fn traverse_directory<P: AsRef<Path>>(
                 continue;
             }
         }
+        if options.dir_only && !path.is_dir() {
+            continue;
+        }
 
         // Print indentation
         let root_path_buf = root_path.as_ref().to_path_buf();
@@ -79,22 +82,20 @@ pub fn traverse_directory<P: AsRef<Path>>(
                 stats.0 += 1;
             }
             println!();
-            if !options.dir_only {
-                if is_entry_last {
-                    last_entry_depths.insert(depth);
-                }
-                traverse_directory(
-                    root_path.as_ref(),
-                    &path,
-                    options,
-                    depth + 1,
-                    is_entry_last,
-                    stats,
-                    last_entry_depths,
-                )?;
-                if is_entry_last {
-                    last_entry_depths.remove(&depth);
-                }
+            if is_entry_last {
+                last_entry_depths.insert(depth);
+            }
+            traverse_directory(
+                root_path.as_ref(),
+                &path,
+                options,
+                depth + 1,
+                is_entry_last,
+                stats,
+                last_entry_depths,
+            )?;
+            if is_entry_last {
+                last_entry_depths.remove(&depth);
             }
         } else {
             // If it's a file and the size option is set, print its size
@@ -131,7 +132,7 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
     let mut stats = (0, 0); // (directories, files)
                             // Recursively traverse the directory and print its contents
     let mut last_entry_depths = HashSet::new();
-    
+
     traverse_directory(
         current_path,
         current_path,
