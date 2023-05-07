@@ -20,25 +20,35 @@ pub fn traverse_directory<P: AsRef<Path>>(
         let is_entry_last = index == last_index;
 
         // Check if hidden files and directories are allowed
-        let is_hidden = path.file_name().map(|name| name.to_string_lossy().starts_with('.')).unwrap_or(false);
+        let is_hidden = path
+            .file_name()
+            .map(|name| name.to_string_lossy().starts_with('.'))
+            .unwrap_or(false);
         if !options.all_files && is_hidden {
+            continue;
+        }
+        if options.level.is_some() && depth >= options.level.unwrap() as usize {
             continue;
         }
 
         // Print indentation
-        if !options.no_indent {
+        let root_path_buf = root_path.as_ref().to_path_buf();
+        let current_path_buf = current_path.to_path_buf();
+        if !options.no_indent && current_path_buf != root_path_buf {
             for _ in 0..depth {
-                print!("|   ");
+                print!("│   ");
             }
             if is_last {
                 print!("    ");
-            } else {
-                print!("|   ");
-            }
+            } 
         }
 
         // Print file/directory name with prefix
-        let prefix = if is_entry_last { "└── " } else { "├── " };
+        let prefix = if is_entry_last {
+            "└── "
+        } else {
+            "├── "
+        };
         let name = if options.full_path {
             path.display().to_string()
         } else {
@@ -53,7 +63,14 @@ pub fn traverse_directory<P: AsRef<Path>>(
             }
             println!();
             if !options.dir_only {
-                traverse_directory(root_path.as_ref(), &path, options, depth + 1, is_entry_last, stats)?;
+                traverse_directory(
+                    root_path.as_ref(),
+                    &path,
+                    options,
+                    depth + 1,
+                    is_entry_last,
+                    stats,
+                )?;
             }
         } else {
             // If it's a file and the size option is set, print its size
@@ -75,11 +92,11 @@ pub fn traverse_directory<P: AsRef<Path>>(
 
 pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io::Result<()> {
     let current_path = path.as_ref();
-    println!("{}", current_path.display());
+    println!("{}", current_path.file_name().and_then(|name| name.to_str()).unwrap_or("."));
 
     let mut stats = (0, 0); // (directories, files)
-    // Recursively traverse the directory and print its contents
-    traverse_directory(current_path, current_path, options, 1, false, &mut stats)?;
+                            // Recursively traverse the directory and print its contents
+    traverse_directory(current_path, current_path, options, 0, false, &mut stats)?;
 
     println!("\n{} directories, {} files", stats.0, stats.1);
     Ok(())
