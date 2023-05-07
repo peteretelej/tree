@@ -33,7 +33,9 @@ Using this project to learn Rust, so it's not production ready. Feel free to PR 
 
 ### Download Binaries
 
-Binaries for various platforms are available on the [Releases Page](https://github.com/peteretelej/tree/releases) (Windows, MacOS, Linux).
+Ready to use binaries for various platforms are available on the [Releases Page](https://github.com/peteretelej/tree/releases) (Windows, MacOS, Linux).
+- Download and unzip for your plaform
+- If placing in $PATH, you can rename it to avoid confusing with any other `tree` binaries
 
 ### Build from Source
 
