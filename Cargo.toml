@@ -9,6 +9,10 @@ an indented directory listing of files.
 """
 keywords = ["tree", "cli", "utility"]
 categories = ["command-line-utilities"]
+license = "MIT"
+homepage = "https://github.com/peteretelej/tree"
+repository = "https://github.com/peteretelej/tree"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
