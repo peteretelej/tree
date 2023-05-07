@@ -35,6 +35,9 @@ If you have Rust and Cargo installed, you can build the project by running:
 git clone https://github.com/peteretelej/tree.git
 cd tree
 cargo build --release
+
+./target/release/tree -L 2 .
+# copy tree binary to a PATH directory
 ```
 The resulting binary will be located at ./target/release/tree. 
 

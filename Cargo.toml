@@ -26,3 +26,7 @@ is_executable = "1.0.1"
 
 [dev-dependencies]
 tempfile = "3.2"
+
+[[bin]]
+name = "tree"
+path = "src/main.rs"
