@@ -9,5 +9,6 @@ pub struct TreeOptions {
     pub print_size: bool,
     pub human_readable: bool,
     pub pattern_glob: Option<Pattern>,
-
+    pub color: bool,
+    pub no_color: bool,
 }

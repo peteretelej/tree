@@ -2,8 +2,8 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
-use crate::tree::options::TreeOptions;
-use crate::tree::utils::bytes_to_human_readable;
+use crate::rust_tree::options::TreeOptions;
+use crate::rust_tree::utils::bytes_to_human_readable;
 
 pub fn traverse_directory<P: AsRef<Path>>(
     root_path: P,

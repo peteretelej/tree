@@ -9,12 +9,13 @@
 - [x] Display directory structure in a tree-like format
 - [x] Control the depth of recursion with the `-L` flag
 - [x] Show full path with the `-f` flag
-- [x] Colorize output with the `-C` flag
-- [x] No indentation with the `-icls` flag
+- [x] No indentation with the `-i` flag
 - [x] Display hidden files with the `-a` flag
 - [x] Include specific files matching patterns with the `-P` flag
 - [x] Display the size of each file with the `-s` flag
 - [x] Display the total size of each directory with the `-h` flagS
+- [ ] Colorize output with the `-C` flag
+- [ ] Turn Colorization off with the `-n` flag
 - [ ] Exclude specific files matching patterns with the `-I` flag
 - [ ] Send output to filename with `-o` flag
 - [ ] Do not descend directories that contain more a more than # entries with `--filelimit` flag
@@ -35,13 +36,31 @@ git clone https://github.com/peteretelej/tree.git
 cd tree
 cargo build --release
 ```
-The resulting binary will be located at ./target/release/tree.
+The resulting binary will be located at ./target/release/tree. 
 
 ## Usage 
 ```sh
-tree [FLAGS] [OPTIONS] [PATH]
+./tree [FLAGS] [OPTIONS] [PATH]
 ```
 
+For example
+```sh
+./tree -L 2 .
+
+# -L 2: displays upto 2 levels of recursion
+```
+
+
+## Using as Rust Crate
+```rust
+use rust_tree::tree::{list_directory, options::TreeOptions};
+
+fn main() {
+    let path = ".";
+    let options = TreeOptions::default();
+    list_directory(path, &options).unwrap();
+}
+```
 
 ### Disclaimer
 Using this project to learn Rust, so it's not production ready. Feel free to PR for any improvements.

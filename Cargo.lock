@@ -190,6 +190,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "is_executable"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fa9acdc6d67b75e626ad644734e8bc6df893d9cd2a834129065d3dd6158ea9c8"
+dependencies = [
+ "winapi",
+]
+
+[[package]]
 name = "libc"
 version = "0.2.142"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -252,6 +261,19 @@ dependencies = [
  "getrandom",
  "redox_syscall 0.2.16",
  "thiserror",
+]
+
+[[package]]
+name = "rust_tree"
+version = "0.1.0"
+dependencies = [
+ "ansi_term",
+ "clap",
+ "glob",
+ "is_executable",
+ "tempfile",
+ "term",
+ "walkdir",
 ]
 
 [[package]]
@@ -357,18 +379,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
-]
-
-[[package]]
-name = "tree"
-version = "0.1.0"
-dependencies = [
- "ansi_term",
- "clap",
- "glob",
- "tempfile",
- "term",
- "walkdir",
 ]
 
 [[package]]
