@@ -1,20 +1,11 @@
+name: Release
+
 on:
   push:
     tags:
       - '*'
       
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    env:
-      CARGO_TERM_COLOR: always
-    steps:
-      - uses: actions/checkout@v2
-      - name: Build
-        run: cargo build 
-      - name: Run tests
-        run: cargo test
-
   release:
     name: release ${{ matrix.target }}
     runs-on: ubuntu-latest
