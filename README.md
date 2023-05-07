@@ -14,8 +14,8 @@
 - [x] Include specific files matching patterns with the `-P` flag
 - [x] Display the size of each file with the `-s` flag
 - [x] Display the total size of each directory with the `-h` flagS
-- [ ] Colorize output with the `-C` flag
-- [ ] Turn Colorization off with the `-n` flag
+- [x] Colorize output with the `-C` flag
+- [x] Turn Colorization off with the `-n` flag
 - [ ] Exclude specific files matching patterns with the `-I` flag
 - [ ] Send output to filename with `-o` flag
 - [ ] Do not descend directories that contain more a more than # entries with `--filelimit` flag
