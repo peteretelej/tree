@@ -57,7 +57,7 @@ fn main() {
         all_files: matches.is_present("all_files"),
         level,
         full_path: matches.is_present("full_path"),
-        dir_only: matches.is_present("dir_only"),   // TODO: implement dir_only
+        dir_only: matches.is_present("dir_only"),
         no_indent: matches.is_present("no_indent"),
         print_size: matches.is_present("print_size"),
         human_readable: matches.is_present("human_readable"),
