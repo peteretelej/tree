@@ -21,6 +21,9 @@
 - [ ] Do not descend directories that contain more a more than # entries with `--filelimit` flag
 - [ ] List directories first before files with `dirsfirst` flag
 
+### Disclaimer
+Using this project to learn Rust, so it's not production ready. Feel free to PR for any improvements.
+
 ## Installation
 
 ### Download Binaries
@@ -65,8 +68,7 @@ fn main() {
 }
 ```
 
-### Disclaimer
-Using this project to learn Rust, so it's not production ready. Feel free to PR for any improvements.
+
 
 
 ## Contributing
