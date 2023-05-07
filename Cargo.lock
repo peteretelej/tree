@@ -265,7 +265,7 @@ dependencies = [
 
 [[package]]
 name = "rust_tree"
-version = "0.1.2"
+version = "0.1.4"
 dependencies = [
  "ansi_term",
  "clap",
