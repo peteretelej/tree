@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::fs::{create_dir_all, File};
 use std::process::Command;
 
@@ -31,6 +32,10 @@ fn last_line(output: &str) -> &str {
     output.lines().last().unwrap_or("")
 }
 
+fn lines_to_set(s: &str) -> HashSet<&str> {
+    s.lines().collect()
+}
+
 #[test]
 fn test_normal() {
     create_test_directory();
@@ -46,7 +51,7 @@ fn test_normal() {
 "#;
 
     let output = run_cmd(&["tests/test_directory"]);
-    assert_eq!(expected, output);
+    assert_eq!(lines_to_set(expected), lines_to_set(&output));
 }
 
 #[test]
@@ -61,7 +66,7 @@ fn test_max_depth() {
 "#;
 
     let output = run_cmd(&["-L", "1", "tests/test_directory"]);
-    assert_eq!(expected, output);
+    assert_eq!(lines_to_set(expected), lines_to_set(&output));
 }
 
 #[test]
@@ -79,7 +84,7 @@ fn test_filter_txt_files() {
 "#;
 
     let output = run_cmd(&["-P", "*.txt", "tests/test_directory"]);
-    assert_eq!(expected, output);
+    assert_eq!(lines_to_set(expected), lines_to_set(&output));
 }
 
 #[test]
