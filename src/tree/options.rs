@@ -7,5 +7,7 @@ pub struct TreeOptions {
     pub dir_only: bool,
     pub no_indent: bool,
     pub print_size: bool,
+    pub human_readable: bool,
     pub pattern_glob: Option<Pattern>,
+
 }

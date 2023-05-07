@@ -69,12 +69,13 @@ fn test_filter_txt_files() {
     create_test_directory();
     let expected = r#"test_directory
 ├── dir1
+│   ├── dir1_1
 │   └── file2.txt
 ├── dir2
 │   └── file3.txt
 └── file1.txt
 
-2 directories, 3 files
+3 directories, 3 files
 "#;
 
     let output = run_cmd(&["-P", "*.txt", "tests/test_directory"]);
@@ -102,7 +103,7 @@ fn test_max_depth_summary() {
 #[test]
 fn test_filter_txt_files_summary() {
     create_test_directory();
-    let expected = "2 directories, 3 files";
+    let expected = "3 directories, 3 files";
 
     let output = run_cmd(&["-P", "*.txt", "tests/test_directory"]);
     assert_eq!(expected, last_line(&output));

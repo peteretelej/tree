@@ -7,15 +7,18 @@
 ## Features
 
 - [x] Display directory structure in a tree-like format
-- [x] Control the depth of recursion with the `-L` or `--level` flag
-- [x] Show full path with the `-f` or `--full-path` flag
+- [x] Control the depth of recursion with the `-L` flag
+- [x] Show full path with the `-f` flag
 - [x] Colorize output with the `-C` flag
-- [x] No indentation with the `-I` or `--no-indent` flag
-- [ ] Display hidden files with the `-a` or `--all` flag
-- [ ] Include or exclude specific file patterns with the `-P` flag
-- [ ] Display the size of each file with the `-s` or `--size` flag
-- [ ] Display the total size of each directory with the `-h` or `--human-readable` flag
-- [ ] Other advanced features
+- [x] No indentation with the `-icls` flag
+- [x] Display hidden files with the `-a` flag
+- [x] Include specific files matching patterns with the `-P` flag
+- [x] Display the size of each file with the `-s` flag
+- [x] Display the total size of each directory with the `-h` flagS
+- [ ] Exclude specific files matching patterns with the `-I` flag
+- [ ] Send output to filename with `-o` flag
+- [ ] Do not descend directories that contain more a more than # entries with `--filelimit` flag
+- [ ] List directories first before files with `dirsfirst` flag
 
 ## Installation
 
@@ -32,14 +35,17 @@ git clone https://github.com/peteretelej/tree.git
 cd tree
 cargo build --release
 ```
-
-
 The resulting binary will be located at ./target/release/tree.
 
 ## Usage 
 ```sh
 tree [FLAGS] [OPTIONS] [PATH]
 ```
+
+
+### Disclaimer
+Using this project to learn Rust, so it's not production ready. Feel free to PR for any improvements.
+
 
 ## Contributing
 Contributions are welcome! If you have any suggestions, feature requests, or bug reports, please feel free to open an issue or submit a pull request on the GitHub repository.

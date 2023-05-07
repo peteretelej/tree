@@ -2,6 +2,7 @@ use std::fs;
 use std::path::Path;
 
 use crate::tree::options::TreeOptions;
+use crate::tree::utils::bytes_to_human_readable;
 
 pub fn traverse_directory<P: AsRef<Path>>(
     root_path: P,
@@ -50,11 +51,14 @@ pub fn traverse_directory<P: AsRef<Path>>(
         }
 
         // Print file/directory name with prefix
-        let prefix = if is_entry_last {
+        let prefix = if options.no_indent{
+            ""
+        } else if is_entry_last {
             "└── "
         } else {
             "├── "
         };
+        
         let name = if options.full_path {
             path.display().to_string()
         } else {
@@ -83,12 +87,16 @@ pub fn traverse_directory<P: AsRef<Path>>(
             if !is_hidden {
                 stats.1 += 1;
             }
-            if options.print_size {
+            if options.print_size || options.human_readable {
                 let metadata = entry.metadata()?;
                 let size = metadata.len();
-                let size_str = format!(" ({:5}B)", size);
+                let size_str = if options.human_readable {
+                    format!(" ({})", bytes_to_human_readable(size))
+                } else {
+                    format!(" ({:5}B)", size)
+                };
                 print!("{}", size_str);
-            }
+            }            
             println!();
         }
     }

@@ -29,6 +29,7 @@ fn main() {
         .arg(Arg::new("dir_only").short('d').help("List directories only."),)
         .arg(Arg::new("no_indent").short('i').help("Makes tree not print the indentation lines, useful when used in conjunction with the -f option."),)
         .arg(Arg::new("print_size").short('s').help("Print the size of each file in bytes along with the name."),)
+        .arg(Arg::new("human_readable").short('h').help("Print the size of each file but in a more human readable way, e.g. appending a size letter for kilobytes (K), megabytes (M), gigabytes (G), and so forth."),)
         .get_matches();
 
     let path = matches.value_of("directory").unwrap_or(".");
@@ -45,10 +46,11 @@ fn main() {
     let options = TreeOptions {
         all_files: matches.is_present("all_files"),
         level,
-        full_path: matches.is_present("full_path"), // TODO: implement full_path
+        full_path: matches.is_present("full_path"),
         dir_only: matches.is_present("dir_only"),   // TODO: implement dir_only
-        no_indent: matches.is_present("no_indent"), // TODO: implement no_indent
-        print_size: matches.is_present("print_size"), // TODO: implement print_size
+        no_indent: matches.is_present("no_indent"),
+        print_size: matches.is_present("print_size"),
+        human_readable: matches.is_present("human_readable"),
         pattern_glob: pattern_glob,
     };
 
