@@ -28,7 +28,7 @@ Using this project to learn Rust, so it's not production ready. Feel free to PR 
 
 ### Download Binaries
 
-Binaries for various platforms are available on the [GitHub Releases](https://github.com/peteretelej/tree/releases) (Windows, MacOS, Linux) page.
+Binaries for various platforms are available on the [Releases Page](https://github.com/peteretelej/tree/releases) (Windows, MacOS, Linux).
 
 ### Build from Source
 
@@ -63,16 +63,30 @@ use rust_tree::tree::{list_directory, options::TreeOptions};
 
 fn main() {
     let path = ".";
-    let options = TreeOptions::default();
+    let options = TreeOptions {
+        full_path: true,
+        no_indent: true,
+        ..Default::default()
+    };
     list_directory(path, &options).unwrap();
 }
 ```
 
+Using the `bytes_to_human_readable` function to print human readable file sizes
+```rust
+use rust_tree::utils::bytes_to_human_readable;
+use std::fs;
 
-
+fn main() {
+    let metadata = fs::metadata("my_file.txt").unwrap();
+    let size = metadata.len();
+    let size_str = bytes_to_human_readable(size);
+    println!("File size: {}", size_str);
+}
+```
 
 ## Contributing
-Contributions are welcome! If you have any suggestions, feature requests, or bug reports, please feel free to open an issue or submit a pull request on the GitHub repository.
+Contributions are welcome! If you have any suggestions, feature requests, or bug reports, please feel free to open an issue or submit a pull request on the [GitHub repository](https://github.com/peteretelej/tree).
 
 ## License
 MIT 
