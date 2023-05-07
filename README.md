@@ -54,7 +54,7 @@ For example
 ```
 
 
-## Using as Rust Crate
+### Using as Rust Crate
 ```rust
 use rust_tree::tree::{list_directory, options::TreeOptions};
 
@@ -73,4 +73,4 @@ Using this project to learn Rust, so it's not production ready. Feel free to PR 
 Contributions are welcome! If you have any suggestions, feature requests, or bug reports, please feel free to open an issue or submit a pull request on the GitHub repository.
 
 ## License
-This project is licensed under the MIT License.
+MIT 
