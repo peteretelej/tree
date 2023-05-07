@@ -11,7 +11,7 @@ pub fn traverse_directory<P: AsRef<Path>>(
     current_path: &Path,
     options: &TreeOptions,
     depth: usize,
-    is_last: bool,
+    _is_last: bool,
     stats: &mut (u64, u64),
     last_entry_depths: &mut HashSet<usize>,
 ) -> std::io::Result<()> {
@@ -57,9 +57,6 @@ pub fn traverse_directory<P: AsRef<Path>>(
                 } else {
                     print!("│   ");
                 }
-            }
-            if is_last {
-                print!("    ");
             }
         }
 
