@@ -1,14 +1,8 @@
-use std::fs;
-use is_executable::IsExecutable;
 use ansi_term::Colour::{Blue, Cyan, Green, Red, Yellow};
+use is_executable::IsExecutable;
+use std::fs;
 
-use crate::rust_tree::options::TreeOptions;
-
-pub fn colorize(entry: &fs::DirEntry, options: &TreeOptions, text: String) -> String {
-    if options.no_color || !options.color {
-        return text;
-    }
-
+pub fn colorize(entry: &fs::DirEntry, text: String) -> String {
     let file_type = entry.file_type().unwrap();
     let is_exec = entry.path().is_executable();
 

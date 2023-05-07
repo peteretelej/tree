@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
+use crate::rust_tree::display::colorize;
 use crate::rust_tree::options::TreeOptions;
 use crate::rust_tree::utils::bytes_to_human_readable;
 
@@ -74,7 +75,12 @@ pub fn traverse_directory<P: AsRef<Path>>(
         } else {
             entry.file_name().to_string_lossy().to_string()
         };
-        print!("{}{}", prefix, name);
+        let colored_name = if options.no_color || !options.color {
+            name
+        } else {
+            colorize(&entry, name)
+        };
+        print!("{}{}", prefix, colored_name);
 
         if entry.file_type()?.is_dir() {
             // If it's a directory, recurse into it
