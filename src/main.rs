@@ -1,4 +1,7 @@
 use clap::{App, Arg};
+use glob::Pattern;
+use std::option::Option;
+
 use tree::tree::options::TreeOptions;
 use tree::tree::traversal::list_directory;
 
@@ -16,6 +19,12 @@ fn main() {
                 .takes_value(true)
                 .help("Max display depth of the directory tree."),
         )
+        .arg(
+            Arg::new("pattern")
+            .short('P')
+            .takes_value(true)
+            .help("List only those files that match the wild-card pattern. Note: you must use the -a option to also consider those files beginning with a dot '.' for matching."),
+        )
         .arg(Arg::new("full_path").short('f').help("Prints the full path prefix for each file."),)
         .arg(Arg::new("dir_only").short('d').help("List directories only."),)
         .arg(Arg::new("no_indent").short('i').help("Makes tree not print the indentation lines, useful when used in conjunction with the -f option."),)
@@ -26,6 +35,12 @@ fn main() {
     let level = matches
         .value_of("level")
         .and_then(|l| l.parse::<i32>().ok());
+    let pattern_glob: Option<Pattern> = matches.value_of("pattern").map(|pattern| {
+        Pattern::new(pattern).unwrap_or_else(|_| {
+            eprintln!("Error: Invalid glob pattern.");
+            std::process::exit(1);
+        })
+    });
 
     let options = TreeOptions {
         all_files: matches.is_present("all_files"),
@@ -34,6 +49,7 @@ fn main() {
         dir_only: matches.is_present("dir_only"),   // TODO: implement dir_only
         no_indent: matches.is_present("no_indent"), // TODO: implement no_indent
         print_size: matches.is_present("print_size"), // TODO: implement print_size
+        pattern_glob: pattern_glob,
     };
 
     if let Err(e) = list_directory(path, &options) {

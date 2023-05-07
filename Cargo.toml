@@ -17,6 +17,7 @@ walkdir = "2.3"
 clap = "3.0"
 ansi_term = "0.12"
 term = "0.7"
+glob = "0.3.1"
 
 [dev-dependencies]
 tempfile = "3.2"

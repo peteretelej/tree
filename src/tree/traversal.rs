@@ -20,8 +20,7 @@ pub fn traverse_directory<P: AsRef<Path>>(
         let is_entry_last = index == last_index;
 
         // Check if hidden files and directories are allowed
-        let is_hidden = path
-            .file_name()
+        let is_hidden = path.file_name()
             .map(|name| name.to_string_lossy().starts_with('.'))
             .unwrap_or(false);
         if !options.all_files && is_hidden {
@@ -29,6 +28,13 @@ pub fn traverse_directory<P: AsRef<Path>>(
         }
         if options.level.is_some() && depth >= options.level.unwrap() as usize {
             continue;
+        }
+        if options.pattern_glob.is_some() && !path.is_dir(){
+            let pattern_glob = options.pattern_glob.as_ref().unwrap();
+            let file_name = path.file_name().unwrap().to_string_lossy();
+            if !pattern_glob.matches(&file_name) {
+                continue;
+            }
         }
 
         // Print indentation
