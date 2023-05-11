@@ -61,7 +61,7 @@ fn main() {
         no_indent: matches.is_present("no_indent"),
         print_size: matches.is_present("print_size"),
         human_readable: matches.is_present("human_readable"),
-        pattern_glob: pattern_glob,
+        pattern_glob,
         color: matches.is_present("color"),
         no_color: matches.is_present("no_color"),
     };

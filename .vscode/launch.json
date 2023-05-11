@@ -13,7 +13,7 @@
                     "test",
                     "--no-run",
                     "--lib",
-                    "--package=tree"
+                    "--package=rust_tree"
                 ],
                 "filter": {
                     "name": "tree",
@@ -31,7 +31,7 @@
                 "args": [
                     "build",
                     "--bin=tree",
-                    "--package=tree"
+                    "--package=rust_tree"
                 ],
                 "filter": {
                     "name": "tree",
@@ -50,7 +50,7 @@
                     "test",
                     "--no-run",
                     "--bin=tree",
-                    "--package=tree"
+                    "--package=rust_tree"
                 ],
                 "filter": {
                     "name": "tree",
