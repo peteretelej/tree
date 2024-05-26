@@ -1,11 +1,14 @@
-# tree
+# tree - Cross-Platform tree cli written in Rust
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/peteretelej/tree)](https://github.com/peteretelej/tree/releases)
 [![Rust Crate](https://img.shields.io/crates/v/rust_tree.svg)](https://crates.io/crates/rust_tree)
 [![Build & Test](https://github.com/peteretelej/tree/actions/workflows/rust_test.yml/badge.svg)](https://github.com/peteretelej/tree/actions/workflows/rust_test.yml)
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/peteretelej/tree/blob/main/LICENSE)
 
-`tree` is a command-line utility that recursively displays the directory structure of a given path in a tree-like format, inspired by the Unix `tree` command. It is implemented in Rust and aims to provide a fast and efficient alternative with additional features.
+
+`tree` is an open-source `tree` command-line application that recursively displays the directory structure of a given path in a tree-like format, inspired by the Unix `tree` command. It is implemented in Rust and aims to provide a fast and efficient alternative with additional features, especially useful on platforms with no or limited `tree` cli features. Available for most platforms.
+
+Website: https://peteretelej.github.io/tree/
 
 ![tree Example](./example.png)
 
@@ -26,14 +29,13 @@
 - [ ] Do not descend directories that contain more a more than # entries with `--filelimit` flag
 - [ ] List directories first before files with `dirsfirst` flag
 
-### Disclaimer
-Using this project to learn Rust, so it's not production ready. Feel free to PR for any improvements.
+Please feel to open PR requests in case interested in implementing some of the pending features.
 
 ## Installation
 
 ### Download Binaries
 
-Ready to use binaries for various platforms are available on the [Releases Page](https://github.com/peteretelej/tree/releases) (Windows, MacOS, Linux).
+You can easily download binaries for different platforms from the [Releases Page](https://github.com/peteretelej/tree/releases) (Windows, MacOS, Linux).
 - Download and unzip for your plaform
 - If placing in $PATH, you can rename it to avoid confusing with any other `tree` binaries
 
