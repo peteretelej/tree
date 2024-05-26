@@ -8,7 +8,7 @@
 
 `tree` is an open-source `tree` command-line application that recursively displays the directory structure of a given path in a tree-like format, inspired by the Unix `tree` command. It is implemented in Rust and aims to provide a fast and efficient alternative with additional features, especially useful on platforms with no or limited `tree` cli features. Available for most platforms.
 
-Website: https://peteretelej.github.io/tree/
+Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tree/)
 
 ![tree Example](./example.png)
 
