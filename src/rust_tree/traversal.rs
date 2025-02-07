@@ -259,6 +259,36 @@ fn has_pattern_filter(options: &TreeOptions) -> bool {
     options.pattern_glob.is_some() || !options.exclude_patterns.is_empty()
 }
 
+fn should_skip_dir_recursion(path: &Path, depth: usize, options: &TreeOptions) -> bool {
+    if let Some(max_level) = options.level {
+        if (depth + 1) >= max_level as usize {
+            return true;
+        }
+    }
+    if let Some(limit) = options.file_limit {
+        match fs::read_dir(path) {
+            Ok(reader) => {
+                if reader.count() > limit as usize {
+                    return true;
+                }
+            }
+            Err(e) => {
+                eprintln!("Warning: Could not read directory {path:?} to check filelimit: {e}");
+            }
+        }
+    }
+    false
+}
+
+fn dir_matches_pattern(path: &Path, options: &TreeOptions) -> bool {
+    options.match_dirs
+        && options.pattern_glob.as_ref().is_some_and(|pattern| {
+            path.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|name| pattern.matches(name))
+        })
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn traverse_directory<P: AsRef<Path>, W: Write>(
     writer: &mut W,
@@ -366,115 +396,81 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
         }
     }
 
-    // --- 4. Iterate, Print, Count Stats, and Recurse (conditionally) ---
     let prune_mode = options.prune && has_pattern_filter(options);
     let mut found_content = false;
 
-    let last_index = entries_info.len().saturating_sub(1);
+    let surviving: Vec<bool> = if prune_mode {
+        entries_info
+            .iter()
+            .map(|info| {
+                let path = info.entry.path();
+                if info.entry.file_type()?.is_dir() {
+                    let skip = should_skip_dir_recursion(&path, depth, options);
+                    let child_matched = dir_matches_pattern(&path, options);
+                    let has_content = if skip {
+                        false
+                    } else {
+                        let mut probe_stats = (0u64, 0u64);
+                        traverse_directory(
+                            &mut io::sink(),
+                            root_path.as_ref(),
+                            &path,
+                            options,
+                            depth + 1,
+                            &mut probe_stats,
+                            &[],
+                            icon_manager,
+                            child_matched,
+                        )?
+                    };
+                    Ok(has_content || child_matched)
+                } else {
+                    Ok(true)
+                }
+            })
+            .collect::<std::io::Result<_>>()?
+    } else {
+        vec![true; entries_info.len()]
+    };
+
+    let surviving_count = surviving.iter().filter(|&&f| f).count();
+    let mut emit_idx = 0;
+
     for (index, info) in entries_info.into_iter().enumerate() {
+        if !surviving[index] {
+            continue;
+        }
         let entry = info.entry;
         let path = entry.path();
-        let is_entry_last = index == last_index;
+        let is_last = emit_idx == surviving_count.saturating_sub(1);
+        emit_idx += 1;
 
         if entry.file_type()?.is_dir() {
-            // --- Check limits specifically for this directory before recursion ---
-            let mut skip_recursion = false;
+            let skip_recursion = should_skip_dir_recursion(&path, depth, options);
+            let child_parent_matched = dir_matches_pattern(&path, options);
 
-            // 1. Check level limit for the *next* level
-            if let Some(max_level) = options.level {
-                if (depth + 1) >= max_level as usize {
-                    skip_recursion = true;
-                }
-            }
+            let line = format_entry_line(&entry, options, indent_state, is_last, icon_manager)?;
+            writeln!(writer, "{line}")?;
+            stats.0 += 1;
+            found_content = true;
 
-            // 2. Check file limit (only if level limit doesn't already skip)
             if !skip_recursion {
-                if let Some(limit) = options.file_limit {
-                    match fs::read_dir(&path) {
-                        Ok(reader) => {
-                            let entry_count = reader.count();
-                            if entry_count > limit as usize {
-                                skip_recursion = true;
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!(
-                                "Warning: Could not read directory {path:?} to check filelimit: {e}"
-                            );
-                        }
-                    }
-                }
-            }
-
-            let child_parent_matched = options.match_dirs
-                && options.pattern_glob.as_ref().is_some_and(|pattern| {
-                    path.file_name()
-                        .and_then(|n| n.to_str())
-                        .is_some_and(|name| pattern.matches(name))
-                });
-
-            if prune_mode {
-                let mut child_buffer: Vec<u8> = Vec::new();
-                let mut child_stats = (0u64, 0u64);
                 let mut next_indent_state = indent_state.to_vec();
-                next_indent_state.push(is_entry_last);
-
-                let has_content = if skip_recursion {
-                    false
-                } else {
-                    traverse_directory(
-                        &mut child_buffer,
-                        root_path.as_ref(),
-                        &path,
-                        options,
-                        depth + 1,
-                        &mut child_stats,
-                        &next_indent_state,
-                        icon_manager,
-                        child_parent_matched,
-                    )?
-                };
-
-                if has_content || child_parent_matched {
-                    let line = format_entry_line(
-                        &entry,
-                        options,
-                        indent_state,
-                        is_entry_last,
-                        icon_manager,
-                    )?;
-                    writeln!(writer, "{line}")?;
-                    writer.write_all(&child_buffer)?;
-                    stats.0 += 1 + child_stats.0;
-                    stats.1 += child_stats.1;
-                    found_content = true;
-                }
-            } else {
-                let line =
-                    format_entry_line(&entry, options, indent_state, is_entry_last, icon_manager)?;
-                writeln!(writer, "{line}")?;
-                stats.0 += 1;
-                found_content = true;
-
-                if !skip_recursion {
-                    let mut next_indent_state = indent_state.to_vec();
-                    next_indent_state.push(is_entry_last);
-                    traverse_directory(
-                        writer,
-                        root_path.as_ref(),
-                        &path,
-                        options,
-                        depth + 1,
-                        stats,
-                        &next_indent_state,
-                        icon_manager,
-                        child_parent_matched,
-                    )?;
-                }
+                next_indent_state.push(is_last);
+                traverse_directory(
+                    writer,
+                    root_path.as_ref(),
+                    &path,
+                    options,
+                    depth + 1,
+                    stats,
+                    &next_indent_state,
+                    icon_manager,
+                    child_parent_matched,
+                )?;
             }
         } else {
-            let line =
-                format_entry_line(&entry, options, indent_state, is_entry_last, icon_manager)?;
+            let line = format_entry_line(&entry, options, indent_state, is_last, icon_manager)?;
             writeln!(writer, "{line}")?;
             stats.1 += 1;
             found_content = true;
@@ -744,13 +740,53 @@ fn display_virtual_entries<W: Write>(
     let prune_mode = options.prune && has_pattern_filter(options);
     let mut found_content = false;
 
-    for (i, entry) in entries.iter().enumerate() {
-        let is_last = i == entries.len() - 1;
+    let surviving: Vec<bool> = entries
+        .iter()
+        .map(|entry| {
+            let should_skip = should_skip_virtual_entry(entry, options, parent_matched)?;
+            if entry.is_dir && prune_mode {
+                let filename = if let Some(pos) = entry.path.rfind('/') {
+                    &entry.path[pos + 1..]
+                } else {
+                    &entry.path
+                };
+                let child_matched = options.match_dirs
+                    && options
+                        .pattern_glob
+                        .as_ref()
+                        .is_some_and(|pattern| pattern.matches(filename));
+                let has_content = if let Some(children) = all_children.get(&entry.path) {
+                    let mut probe_stats = (0u32, 0u32);
+                    display_virtual_entries(
+                        &mut io::sink(),
+                        children,
+                        all_children,
+                        options,
+                        &mut probe_stats,
+                        &[],
+                        depth + 1,
+                        icon_manager,
+                        child_matched,
+                    )?
+                } else {
+                    false
+                };
+                Ok(has_content || child_matched)
+            } else {
+                Ok(!should_skip)
+            }
+        })
+        .collect::<std::io::Result<_>>()?;
 
-        let should_skip = should_skip_virtual_entry(entry, options, parent_matched)?;
-        if should_skip && (!entry.is_dir || !prune_mode) {
+    let surviving_count = surviving.iter().filter(|&&f| f).count();
+    let mut emit_idx = 0;
+
+    for (i, entry) in entries.iter().enumerate() {
+        if !surviving[i] {
             continue;
         }
+        let is_last = emit_idx == surviving_count.saturating_sub(1);
+        emit_idx += 1;
 
         if entry.is_dir {
             let filename = if let Some(pos) = entry.path.rfind('/') {
@@ -764,64 +800,26 @@ fn display_virtual_entries<W: Write>(
                     .as_ref()
                     .is_some_and(|pattern| pattern.matches(filename));
 
-            if prune_mode {
-                let mut child_buffer: Vec<u8> = Vec::new();
-                let mut child_stats = (0u32, 0u32);
+            stats.0 += 1;
+            display_virtual_entry(writer, entry, options, indent_state, is_last, icon_manager)?;
+            found_content = true;
+
+            if let Some(children) = all_children.get(&entry.path) {
                 let mut new_indent_state = indent_state.to_vec();
                 new_indent_state.push(!is_last);
-
-                let has_content = if let Some(children) = all_children.get(&entry.path) {
-                    display_virtual_entries(
-                        &mut child_buffer,
-                        children,
-                        all_children,
-                        options,
-                        &mut child_stats,
-                        &new_indent_state,
-                        depth + 1,
-                        icon_manager,
-                        child_parent_matched,
-                    )?
-                } else {
-                    false
-                };
-
-                if has_content || child_parent_matched {
-                    display_virtual_entry(
-                        writer,
-                        entry,
-                        options,
-                        indent_state,
-                        is_last,
-                        icon_manager,
-                    )?;
-                    writer.write_all(&child_buffer)?;
-                    stats.0 += 1 + child_stats.0;
-                    stats.1 += child_stats.1;
-                    found_content = true;
-                }
-            } else {
-                stats.0 += 1;
-                display_virtual_entry(writer, entry, options, indent_state, is_last, icon_manager)?;
-                found_content = true;
-
-                if let Some(children) = all_children.get(&entry.path) {
-                    let mut new_indent_state = indent_state.to_vec();
-                    new_indent_state.push(!is_last);
-                    display_virtual_entries(
-                        writer,
-                        children,
-                        all_children,
-                        options,
-                        stats,
-                        &new_indent_state,
-                        depth + 1,
-                        icon_manager,
-                        child_parent_matched,
-                    )?;
-                }
+                display_virtual_entries(
+                    writer,
+                    children,
+                    all_children,
+                    options,
+                    stats,
+                    &new_indent_state,
+                    depth + 1,
+                    icon_manager,
+                    child_parent_matched,
+                )?;
             }
-        } else if !should_skip {
+        } else {
             stats.1 += 1;
             display_virtual_entry(writer, entry, options, indent_state, is_last, icon_manager)?;
             found_content = true;
