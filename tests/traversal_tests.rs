@@ -773,19 +773,24 @@ fn test_matchdirs_depth2_contents_not_shown() {
 
     let output = result.unwrap();
 
-    // fzf_root/sub/nested.lua is at depth 3, parent (sub) is at depth 2 - shouldn't be shown
+    // fzf_root/sub/nested.lua - parent "sub" doesn't match, so hidden
     assert!(
         !output.contains("nested.lua"),
-        "Should not contain nested.lua (depth 3)"
+        "Should not contain nested.lua (parent sub doesn't match)"
     );
     assert!(
         !output.contains("verydeep.lua"),
-        "Should not contain verydeep.lua (depth 4)"
+        "Should not contain verydeep.lua (too deep)"
+    );
+    // project/fzf/plugin.lua - parent "fzf" matches fzf*, so shown
+    assert!(
+        output.contains("plugin.lua"),
+        "Should contain plugin.lua (parent fzf matches pattern)"
     );
 }
 
 #[test]
-fn test_matchdirs_nested_match_no_contents() {
+fn test_matchdirs_nested_match_shows_children() {
     let temp_dir = create_matchdirs_test_directory();
     let mut options = create_default_options();
     options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
@@ -796,12 +801,11 @@ fn test_matchdirs_nested_match_no_contents() {
 
     let output = result.unwrap();
 
-    // project/fzf matches pattern but at depth 2, not depth 1
-    // So its contents should NOT be shown unfiltered
+    // project/fzf matches pattern at any depth, so direct children should be shown
     assert!(output.contains("fzf"), "Should contain fzf directory");
     assert!(
-        !output.contains("plugin.lua"),
-        "Should not contain plugin.lua (fzf at depth 2, not depth 1)"
+        output.contains("plugin.lua"),
+        "Should contain plugin.lua (parent fzf matches pattern)"
     );
 }
 
@@ -884,7 +888,7 @@ fn test_matchdirs_fromfile_depth1_contents_shown() {
 }
 
 #[test]
-fn test_matchdirs_fromfile_nested_not_shown() {
+fn test_matchdirs_fromfile_nested_match_shows_children() {
     let temp_dir = tempdir().unwrap();
     let listing_file = temp_dir.path().join("listing.txt");
 
@@ -901,15 +905,15 @@ fn test_matchdirs_fromfile_nested_not_shown() {
 
     let output = result.unwrap();
 
-    // nested.lua parent is "sub" at depth 2, should not be shown
+    // nested.lua parent is "sub" which doesn't match, should not be shown
     assert!(
         !output.contains("nested.lua"),
-        "Should not contain nested.lua (parent at depth 2)"
+        "Should not contain nested.lua (parent sub doesn't match)"
     );
-    // plugin.lua parent is "fzf" at depth 2, should not be shown
+    // plugin.lua parent is "fzf" which matches fzf*, should be shown
     assert!(
-        !output.contains("plugin.lua"),
-        "Should not contain plugin.lua (fzf at depth 2)"
+        output.contains("plugin.lua"),
+        "Should contain plugin.lua (parent fzf matches pattern)"
     );
 }
 
@@ -942,6 +946,278 @@ fn test_matchdirs_fromfile_prune_keeps_matched() {
     assert!(
         !output.contains("other"),
         "Should not contain other (no matching content)"
+    );
+}
+
+#[test]
+fn test_matchdirs_depth1_dir_shows_children() {
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    fs::create_dir_all(temp_path.join("wrapper").join("my_mod")).unwrap();
+    fs::write(
+        temp_path.join("wrapper").join("my_mod").join("file.txt"),
+        "x",
+    )
+    .unwrap();
+
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("*_mod").unwrap());
+    options.match_dirs = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    let output = result.unwrap();
+
+    assert!(output.contains("my_mod"), "Should contain matched dir");
+    assert!(
+        output.contains("file.txt"),
+        "Should contain direct child of matched dir at depth 1"
+    );
+}
+
+#[test]
+fn test_matchdirs_depth2_dir_shows_children() {
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    fs::create_dir_all(temp_path.join("a").join("b").join("my_mod")).unwrap();
+    fs::write(
+        temp_path
+            .join("a")
+            .join("b")
+            .join("my_mod")
+            .join("deep.txt"),
+        "x",
+    )
+    .unwrap();
+
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("*_mod").unwrap());
+    options.match_dirs = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    let output = result.unwrap();
+
+    assert!(output.contains("my_mod"), "Should contain matched dir");
+    assert!(
+        output.contains("deep.txt"),
+        "Should contain direct child of matched dir at depth 2"
+    );
+}
+
+#[test]
+fn test_matchdirs_nested_matched_dirs() {
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    fs::create_dir_all(temp_path.join("outer_mod").join("inner_mod")).unwrap();
+    fs::write(temp_path.join("outer_mod").join("outer.txt"), "x").unwrap();
+    fs::write(
+        temp_path
+            .join("outer_mod")
+            .join("inner_mod")
+            .join("inner.txt"),
+        "x",
+    )
+    .unwrap();
+
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("*_mod").unwrap());
+    options.match_dirs = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    let output = result.unwrap();
+
+    assert!(
+        output.contains("outer.txt"),
+        "Should contain direct child of outer_mod"
+    );
+    assert!(
+        output.contains("inner.txt"),
+        "Should contain direct child of inner_mod"
+    );
+}
+
+#[test]
+fn test_matchdirs_no_cascade() {
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    fs::create_dir_all(temp_path.join("my_mod").join("sub")).unwrap();
+    fs::write(temp_path.join("my_mod").join("direct.txt"), "x").unwrap();
+    fs::write(
+        temp_path.join("my_mod").join("sub").join("grandchild.txt"),
+        "x",
+    )
+    .unwrap();
+
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("*_mod").unwrap());
+    options.match_dirs = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    let output = result.unwrap();
+
+    assert!(
+        output.contains("direct.txt"),
+        "Should contain direct child of matched dir"
+    );
+    assert!(
+        !output.contains("grandchild.txt"),
+        "Should not contain grandchild (no cascade through non-matching sub)"
+    );
+}
+
+#[test]
+fn test_prune_correct_last_connector() {
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    fs::create_dir_all(temp_path.join("keep")).unwrap();
+    fs::create_dir_all(temp_path.join("prune_me")).unwrap();
+    fs::write(temp_path.join("keep").join("match.rs"), "x").unwrap();
+
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("*.rs").unwrap());
+    options.prune = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    let output = result.unwrap();
+
+    assert!(output.contains("keep"), "Should contain keep dir");
+    assert!(
+        !output.contains("prune_me"),
+        "Should not contain pruned empty dir"
+    );
+
+    let lines: Vec<&str> = output.lines().collect();
+    let keep_line = lines.iter().find(|l| l.contains("keep")).unwrap();
+    assert!(
+        keep_line.contains("\u{2514}") || keep_line.contains("+---"),
+        "Last surviving entry should use last-item connector"
+    );
+}
+
+#[test]
+fn test_dir_only_report_no_file_count() {
+    let temp_dir = create_test_directory();
+    let mut options = create_default_options();
+    options.dir_only = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    let output = result.unwrap();
+
+    let last_line = output.lines().last().unwrap();
+    assert!(
+        last_line.contains("director"),
+        "Report should mention directories"
+    );
+    assert!(
+        !last_line.contains("file"),
+        "Report should not mention files in -d mode"
+    );
+}
+
+#[test]
+fn test_dir_only_prune_no_op() {
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    fs::create_dir_all(temp_path.join("match_dir")).unwrap();
+    fs::create_dir_all(temp_path.join("other_dir")).unwrap();
+
+    let mut options_no_prune = create_default_options();
+    options_no_prune.dir_only = true;
+    options_no_prune.pattern_glob = Some(Pattern::new("match*").unwrap());
+    options_no_prune.match_dirs = true;
+
+    let mut options_prune = create_default_options();
+    options_prune.dir_only = true;
+    options_prune.pattern_glob = Some(Pattern::new("match*").unwrap());
+    options_prune.match_dirs = true;
+    options_prune.prune = true;
+
+    let output_no_prune = list_directory_as_string(temp_dir.path(), &options_no_prune).unwrap();
+    let output_prune = list_directory_as_string(temp_dir.path(), &options_prune).unwrap();
+
+    assert_eq!(
+        output_no_prune, output_prune,
+        "-d --prune should be a no-op (prune disabled in dir-only mode)"
+    );
+}
+
+#[test]
+fn test_matchdirs_fromfile_depth1_shows_children() {
+    let temp_dir = tempdir().unwrap();
+    let listing_file = temp_dir.path().join("listing.txt");
+
+    let content = "wrapper/\nwrapper/my_mod/\nwrapper/my_mod/file.txt\n";
+    fs::write(&listing_file, content).unwrap();
+
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("*_mod").unwrap());
+    options.match_dirs = true;
+    options.from_file = true;
+
+    let result = list_directory_as_string(&listing_file, &options);
+    let output = result.unwrap();
+
+    assert!(output.contains("my_mod"), "Should contain matched dir");
+    assert!(
+        output.contains("file.txt"),
+        "Should contain direct child of matched dir"
+    );
+}
+
+#[test]
+fn test_matchdirs_fromfile_no_cascade() {
+    let temp_dir = tempdir().unwrap();
+    let listing_file = temp_dir.path().join("listing.txt");
+
+    let content = "my_mod/\nmy_mod/direct.txt\nmy_mod/sub/\nmy_mod/sub/grandchild.txt\n";
+    fs::write(&listing_file, content).unwrap();
+
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("*_mod").unwrap());
+    options.match_dirs = true;
+    options.from_file = true;
+
+    let result = list_directory_as_string(&listing_file, &options);
+    let output = result.unwrap();
+
+    assert!(
+        output.contains("direct.txt"),
+        "Should contain direct child of matched dir"
+    );
+    assert!(
+        !output.contains("grandchild.txt"),
+        "Should not contain grandchild (no cascade through non-matching sub)"
+    );
+}
+
+#[test]
+fn test_dir_only_fromfile_report() {
+    let temp_dir = tempdir().unwrap();
+    let listing_file = temp_dir.path().join("listing.txt");
+
+    let content = "dir1/\ndir1/file.txt\ndir2/\n";
+    fs::write(&listing_file, content).unwrap();
+
+    let mut options = create_default_options();
+    options.dir_only = true;
+    options.from_file = true;
+
+    let result = list_directory_as_string(&listing_file, &options);
+    let output = result.unwrap();
+
+    let last_line = output.lines().last().unwrap();
+    assert!(
+        last_line.contains("director"),
+        "Report should mention directories"
+    );
+    assert!(
+        !last_line.contains("file"),
+        "Report should not mention files in -d mode"
     );
 }
 

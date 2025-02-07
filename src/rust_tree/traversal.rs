@@ -748,8 +748,10 @@ fn display_virtual_entries<W: Write>(
     let surviving: Vec<bool> = entries
         .iter()
         .map(|entry| {
-            let should_skip = should_skip_virtual_entry(entry, options, parent_matched)?;
             if entry.is_dir && prune_mode {
+                if should_skip_virtual_entry(entry, options, parent_matched)? {
+                    return Ok(false);
+                }
                 let filename = if let Some(pos) = entry.path.rfind('/') {
                     &entry.path[pos + 1..]
                 } else {
@@ -778,6 +780,7 @@ fn display_virtual_entries<W: Write>(
                 };
                 Ok(has_content || child_matched)
             } else {
+                let should_skip = should_skip_virtual_entry(entry, options, parent_matched)?;
                 Ok(!should_skip)
             }
         })
