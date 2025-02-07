@@ -396,7 +396,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
         }
     }
 
-    let prune_mode = options.prune && has_pattern_filter(options);
+    let prune_mode = options.prune && has_pattern_filter(options) && !options.dir_only;
     let mut found_content = false;
 
     let surviving: Vec<bool> = if prune_mode {
@@ -616,23 +616,25 @@ fn list_from_filesystem_with_writer<W: Write>(
         false,
     )?;
 
-    // Print summary only if --noreport is not set
     if !options.no_report {
-        //println!("\n{} directories, {} files", stats.0, stats.1);
         let dir_str = if stats.0 == 1 {
             "directory"
         } else {
             "directories"
         };
-        let file_str = if stats.1 == 1 { "file" } else { "files" };
-        writeln!(
-            writer,
-            "\n{} {}, {} {}",
-            stats.0, dir_str, stats.1, file_str
-        )?;
+        if options.dir_only {
+            writeln!(writer, "\n{} {}", stats.0, dir_str)?;
+        } else {
+            let file_str = if stats.1 == 1 { "file" } else { "files" };
+            writeln!(
+                writer,
+                "\n{} {}, {} {}",
+                stats.0, dir_str, stats.1, file_str
+            )?;
+        }
     }
 
-    writer.flush()?; // Explicitly flush the buffer
+    writer.flush()?;
     Ok(())
 }
 
@@ -700,19 +702,22 @@ fn display_virtual_tree_with_writer<W: Write>(
         )?;
     }
 
-    // Print summary only if --noreport is not set
     if !options.no_report {
         let dir_str = if stats.0 == 1 {
             "directory"
         } else {
             "directories"
         };
-        let file_str = if stats.1 == 1 { "file" } else { "files" };
-        writeln!(
-            writer,
-            "\n{} {}, {} {}",
-            stats.0, dir_str, stats.1, file_str
-        )?;
+        if options.dir_only {
+            writeln!(writer, "\n{} {}", stats.0, dir_str)?;
+        } else {
+            let file_str = if stats.1 == 1 { "file" } else { "files" };
+            writeln!(
+                writer,
+                "\n{} {}, {} {}",
+                stats.0, dir_str, stats.1, file_str
+            )?;
+        }
     }
 
     writer.flush()?;
@@ -737,7 +742,7 @@ fn display_virtual_entries<W: Write>(
         }
     }
 
-    let prune_mode = options.prune && has_pattern_filter(options);
+    let prune_mode = options.prune && has_pattern_filter(options) && !options.dir_only;
     let mut found_content = false;
 
     let surviving: Vec<bool> = entries
