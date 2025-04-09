@@ -40,6 +40,11 @@ fn main() {
                 .short('n')
                 .help("Turn colorization off, overridden by -C."),
         )
+        .arg(
+            Arg::new("ascii")
+                .short('A')
+                .help("Use only ASCII characters on tree display."),
+        )
         .get_matches();
 
     let path = matches.value_of("directory").unwrap_or(".");
@@ -64,6 +69,7 @@ fn main() {
         pattern_glob,
         color: matches.is_present("color"),
         no_color: matches.is_present("no_color"),
+        ascii: matches.is_present("ascii"),
     };
 
     if let Err(e) = list_directory(path, &options) {

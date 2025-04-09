@@ -55,18 +55,19 @@ pub fn traverse_directory<P: AsRef<Path>>(
                 if last_entry_depths.contains(&i) {
                     print!("    ");
                 } else {
-                    print!("│   ");
+                    let vertical_line = if options.ascii { "|   " } else { "│   " };
+                    print!("{}", vertical_line);
                 }
             }
         }
 
         // Print file/directory name with prefix
-        let prefix = if options.no_indent {
-            ""
-        } else if is_entry_last {
-            "└── "
-        } else {
-            "├── "
+        let prefix = match (options.no_indent, is_entry_last, options.ascii) {
+            (true, _, _) => "",
+            (false, true, true) => "+---",
+            (false, true, false) => "└── ",
+            (false, false, true) => "\\---",
+            (false, false, false) => "├── ",
         };
 
         let name = if options.full_path {

@@ -11,4 +11,5 @@ pub struct TreeOptions {
     pub pattern_glob: Option<Pattern>,
     pub color: bool,
     pub no_color: bool,
+    pub ascii: bool,
 }
