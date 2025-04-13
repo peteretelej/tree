@@ -4,8 +4,67 @@ on:
   release:
     types: [created]
 
+permissions:
+  contents: write
+  pull-requests: read
+
 jobs:
+  generate-cli-docs:
+    runs-on: ubuntu-latest
+    outputs:
+      help_text: ${{ steps.get_help.outputs.help_text }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+      - name: Build CLI
+        run: cargo build --release
+      - name: Get help text
+        id: get_help
+        run: |
+          HELP_TEXT="$(./target/release/tree --help)"
+          # Escape newlines and quotes for JSON
+          HELP_TEXT="${HELP_TEXT//$'\n'/\\n}"
+          HELP_TEXT="${HELP_TEXT//\"/\\\"}"
+          echo "help_text=${HELP_TEXT}" >> $GITHUB_OUTPUT
+
+  update-release-notes:
+    needs: generate-cli-docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update Release Notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HELP_TEXT: ${{ needs.generate-cli-docs.outputs.help_text }}
+        run: |
+          # Get the current release notes (which will include the auto-generated notes)
+          RELEASE_ID=$(gh api /repos/${{ github.repository }}/releases/tags/${{ github.ref_name }} --jq .id)
+          CURRENT_BODY=$(gh api /repos/${{ github.repository }}/releases/$RELEASE_ID --jq .body)
+
+          # Create help section
+          HELP_SECTION='
+
+          ---
+
+          <details><summary>CLI Usage</summary>
+
+          ```
+          '"$HELP_TEXT"'
+          ```
+          </details>'
+
+          # Combine notes while preserving auto-generated content
+          NEW_BODY="${CURRENT_BODY}${HELP_SECTION}"
+
+          # Update release notes
+          gh api --method PATCH /repos/${{ github.repository }}/releases/$RELEASE_ID \
+            -f body="$NEW_BODY"
+
   release:
+    needs: update-release-notes
     name: release ${{ matrix.target }}
     runs-on: ubuntu-latest
     strategy:
@@ -31,4 +90,3 @@ jobs:
           RUSTTARGET: ${{ matrix.target }}
           ARCHIVE_TYPES: ${{ matrix.archive }}
           ARCHIVE_NAME: ${{ matrix.name }}
-
