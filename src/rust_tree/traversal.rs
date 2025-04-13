@@ -1,5 +1,7 @@
 use std::fs;
+use std::io;
 use std::path::Path;
+use std::time::SystemTime;
 
 use crate::rust_tree::display::colorize;
 use crate::rust_tree::options::TreeOptions;
@@ -47,6 +49,12 @@ fn should_skip_entry(
     }
 
     Ok(false)
+}
+
+// Helper struct to hold entry and its modification time
+struct EntryInfo {
+    entry: fs::DirEntry,
+    mod_time: io::Result<SystemTime>,
 }
 
 // Helper function to format a single line of the tree output
@@ -122,25 +130,51 @@ pub fn traverse_directory<P: AsRef<Path>>(
 ) -> std::io::Result<()> {
     // Attempt to read directory entries, filter out errors, then collect.
     let read_dir_result = fs::read_dir(current_path);
-    let mut entries: Vec<_> = match read_dir_result {
-        Ok(reader) => reader.filter_map(Result::ok).collect(), // Ignore entries that cause an error during iteration
+    let mut entries_info: Vec<EntryInfo> = match read_dir_result {
+        Ok(reader) => reader
+            .filter_map(Result::ok) // Ignore entries that cause an error during iteration
+            .map(|entry| {
+                let mod_time = entry.metadata().and_then(|m| m.modified());
+                if let Err(e) = &mod_time {
+                    eprintln!(
+                        "Warning: Could not get metadata/mod_time for {:?}: {}",
+                        entry.path(),
+                        e
+                    );
+                }
+                EntryInfo { entry, mod_time }
+            })
+            .collect(),
         Err(e) => {
             // If reading the directory itself fails (e.g., permission denied), print error and skip.
             eprintln!("Error reading directory {:?}: {}", current_path, e);
             return Ok(()); // Continue traversal for other directories if possible
         }
     };
-    
-    entries.sort_by_key(|entry| entry.file_name().to_owned());
 
-    let last_index = entries.len().saturating_sub(1);
+    // Sort entries based on options
+    if options.sort_by_time {
+        entries_info.sort_by(|a, b| {
+            // Treat errors during mod_time retrieval by sorting them first (using UNIX_EPOCH)
+            let time_a = a.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
+            let time_b = b.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
+            time_a
+                .cmp(time_b)
+                .then_with(|| a.entry.file_name().cmp(&b.entry.file_name())) // Secondary sort by name
+        });
+    } else {
+        // Default sort by filename
+        entries_info.sort_by_key(|info| info.entry.file_name().to_owned());
+    }
 
-    for (index, entry_result) in entries.into_iter().enumerate() {
-        let entry = entry_result;
+    let last_index = entries_info.len().saturating_sub(1);
+
+    for (index, info) in entries_info.into_iter().enumerate() {
+        let entry = info.entry; // Extract the DirEntry from EntryInfo
         let path = entry.path();
         let is_entry_last = index == last_index;
 
-        // Check if entry should be skipped
+        // Check if entry should be skipped (using the extracted 'entry')
         if should_skip_entry(&entry, options, depth)? {
             continue;
         }

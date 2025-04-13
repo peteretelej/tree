@@ -20,7 +20,7 @@ Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tre
 - [x] Display hidden files (`-a` or `--all`)
 - [x] Include specific files matching patterns (`-P` or `--pattern`)
 - [x] Display the size of each file (`-s` or `--size`)
-- [x] Display the total size of each directory (`-h` or `--human-readable`)
+- [x] Display the total size of each directory (`-H` or `--human-readable`)
 - [x] Colorize output (`-C` or `--color`)
 - [x] Turn Colorization off (`-n` or `--no-color`)
 - [x] Use ASCII characters for tree display (`-A` or `--ascii`)
@@ -29,6 +29,12 @@ Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tre
 - [ ] Send output to filename with `-o` flag
 - [ ] Do not descend directories that contain more a more than # entries with `--filelimit` flag
 - [ ] List directories first before files with `dirsfirst` flag
+- [x] Sort output by last modification time (`-t`)
+- [ ] Reverse sort order (`-r`)
+- [ ] Print last modification date (`-D`)
+- [ ] Append file type indicators (`/`, `*`, etc.) (`-F`)
+- [ ] Omit summary report (`--noreport`)
+- [ ] Print permissions (`-p`)
 
 Please feel to open PR requests in case interested in implementing some of the pending features.
 

@@ -51,6 +51,9 @@ struct Cli {
 
     #[arg(short = 'A', long = "ascii", help = "Turn on ANSI line graphics hack when printing the indentation lines.")]
     ascii: bool,
+
+    #[arg(short = 't', long = "sort-by-time", help = "Sort output by last modification time instead of alphabetically.")]
+    sort_by_time: bool,
 }
 
 fn main() {
@@ -83,6 +86,7 @@ fn main() {
         color: cli.color,
         no_color: cli.no_color,
         ascii: cli.ascii,
+        sort_by_time: cli.sort_by_time,
     };
 
     if let Err(e) = list_directory(&cli.path, &options) {

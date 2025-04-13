@@ -13,4 +13,5 @@ pub struct TreeOptions {
     pub color: bool,
     pub no_color: bool,
     pub ascii: bool,
+    pub sort_by_time: bool,
 }
