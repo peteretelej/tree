@@ -5,7 +5,6 @@
 [![Build & Test](https://github.com/peteretelej/tree/actions/workflows/rust_test.yml/badge.svg)](https://github.com/peteretelej/tree/actions/workflows/rust_test.yml)
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/peteretelej/tree/blob/main/LICENSE)
 
-
 `tree` is an open-source `tree` command-line application that recursively displays the directory structure of a given path in a tree-like format, inspired by the Unix `tree` command. It is implemented in Rust and aims to provide a fast and efficient alternative with additional features, especially useful on platforms with no or limited `tree` cli features. Available for most platforms.
 
 Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tree/)
@@ -36,6 +35,7 @@ Please feel to open PR requests in case interested in implementing some of the p
 ### Download Binaries
 
 You can easily download binaries for different platforms from the [Releases Page](https://github.com/peteretelej/tree/releases) (Windows, MacOS, Linux).
+
 - Download and unzip for your plaform
 - If placing in $PATH, you can rename it to avoid confusing with any other `tree` binaries
 
@@ -51,22 +51,25 @@ cargo build --release
 ./target/release/tree -L 2 .
 # copy tree binary to a PATH directory
 ```
-The resulting binary will be located at ./target/release/tree. 
 
-## Usage 
+The resulting binary will be located at ./target/release/tree.
+
+## Usage
+
 ```sh
 ./tree [FLAGS] [OPTIONS] [PATH]
 ```
 
 For example
+
 ```sh
 ./tree -L 2 .
 
 # -L 2: displays upto 2 levels of recursion
 ```
 
-
 ### Using as Rust Crate
+
 ```rust
 use rust_tree::tree::{list_directory, options::TreeOptions};
 
@@ -82,6 +85,7 @@ fn main() {
 ```
 
 Using the `bytes_to_human_readable` function to print human readable file sizes
+
 ```rust
 use rust_tree::utils::bytes_to_human_readable;
 use std::fs;
@@ -95,7 +99,9 @@ fn main() {
 ```
 
 ## Contributing
+
 Contributions are welcome! If you have any suggestions, feature requests, or bug reports, please feel free to open an issue or submit a pull request on the [GitHub repository](https://github.com/peteretelej/tree).
 
 ## License
-MIT 
+
+MIT

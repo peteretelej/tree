@@ -1,0 +1,21 @@
+name: PR Label Check
+
+on:
+  pull_request:
+    types: [opened, labeled, unlabeled, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  label-check:
+    name: Validate PR Labels
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check required labels
+        uses: mheap/github-action-required-labels@v5
+        with:
+          mode: minimum
+          count: 1
+          labels: "bug, enhancement, documentation, dependencies, security"
+          message: "Please add at least one classification label to this PR (bug, enhancement, documentation, dependencies, or security)"

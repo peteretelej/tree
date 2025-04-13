@@ -1,0 +1,28 @@
+changelog:
+  exclude:
+    labels:
+      - duplicate
+      - invalid
+      - question
+      - wontfix
+    authors:
+      - dependabot[bot]
+  categories:
+    - title: 🚀 New Features
+      labels:
+        - enhancement
+    - title: 🐛 Bug Fixes
+      labels:
+        - bug
+    - title: 📝 Documentation
+      labels:
+        - documentation
+    - title: 🔒 Security Updates
+      labels:
+        - security
+    - title: 🔧 Maintenance
+      labels:
+        - dependencies
+    - title: ⚙️ Other Changes
+      labels:
+        - "*"
