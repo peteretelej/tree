@@ -9,7 +9,35 @@ permissions:
   pull-requests: read
 
 jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check if version was updated
+        run: |
+          # Get the version from Cargo.toml
+          CURRENT_VERSION=$(grep '^version = ' Cargo.toml | cut -d '"' -f 2)
+
+          # Get the previous release tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "none")
+
+          if [ "$PREV_TAG" != "none" ]; then
+            # Get the version from the previous release's Cargo.toml
+            PREV_VERSION=$(git show "$PREV_TAG:Cargo.toml" | grep '^version = ' | cut -d '"' -f 2)
+            
+            if [ "$CURRENT_VERSION" = "$PREV_VERSION" ]; then
+              echo "Error: Version in Cargo.toml ($CURRENT_VERSION) has not been updated from previous release ($PREV_VERSION)"
+              exit 1
+            fi
+          fi
+
+          echo "Version check passed: $CURRENT_VERSION"
+          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+
   generate-cli-docs:
+    needs: check-version
     runs-on: ubuntu-latest
     outputs:
       help_text: ${{ steps.get_help.outputs.help_text }}

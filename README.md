@@ -2,7 +2,7 @@
 
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/peteretelej/tree)](https://github.com/peteretelej/tree/releases)
 [![Rust Crate](https://img.shields.io/crates/v/rust_tree.svg)](https://crates.io/crates/rust_tree)
-[![Build & Test](https://github.com/peteretelej/tree/actions/workflows/rust_test.yml/badge.svg)](https://github.com/peteretelej/tree/actions/workflows/rust_test.yml)
+[![Build and Test](https://github.com/peteretelej/tree/actions/workflows/build.yml/badge.svg)](https://github.com/peteretelej/tree/actions/workflows/build.yml)
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/peteretelej/tree/blob/main/LICENSE)
 
 `tree` is an open-source `tree` command-line application that recursively displays the directory structure of a given path in a tree-like format, inspired by the Unix `tree` command. It is implemented in Rust and aims to provide a fast and efficient alternative with additional features, especially useful on platforms with no or limited `tree` cli features. Available for most platforms.
@@ -151,8 +151,41 @@ This will automatically format your code when you commit.
 
 Contributions are welcome! If you have any suggestions, feature requests, or bug reports, please feel free to open an issue or submit a pull request on the [GitHub repository](https://github.com/peteretelej/tree).
 
-## License
+### Releasing a new version
 
-MIT
+To release a new version:
+
+1. Update the version in `Cargo.toml`
+2. Update `Cargo.lock`
+
+```bash
+# 2. Update Cargo.lock
+cargo update --package rust_tree
+```
+
+3. Commit and tag
+
+```bash
+git add Cargo.toml Cargo.lock
+git commit -m "chore: bump version to 0.1.5"  # Replace 0.1.5 with new version
+git tag -a "v0.1.5" -m "Version 0.1.5"       # Replace 0.1.5 with new version
+```
+
+4. Push changes
+
+```bash
+git push origin main
+git push origin v0.1.5                        # Replace 0.1.5 with new version
+```
+
+5. Create a new release on GitHub
+   Visit: https://github.com/peteretelej/tree/releases/new
+
+- Choose the tag you just pushed
+- The release workflow will automatically:
+  - Generate CLI documentation
+  - Build binaries for Windows, Linux, and MacOS
+
+## License
 
 MIT
