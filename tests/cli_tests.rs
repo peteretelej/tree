@@ -59,6 +59,9 @@ struct Cli {
 
     #[arg(long = "dirsfirst")]
     dirs_first: bool,
+
+    #[arg(short = 'F', long = "classify")]
+    classify: bool,
 }
 
 #[test]
@@ -299,6 +302,55 @@ fn test_dirsfirst() -> Result<(), Box<dyn std::error::Error>> {
     assert!(pos_sub_dir_b_3 < pos_sub_dir_a_3);
     assert!(pos_sub_dir_a_3 < pos_file_c_3);
     assert!(pos_file_c_3 < pos_file_a_3);
+
+    Ok(())
+}
+
+#[test]
+fn test_classify_flag() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempdir()?;
+    let root = dir.path();
+    let sub_dir = root.join("sub_dir");
+    fs::create_dir(&sub_dir)?;
+    let file_txt = root.join("file.txt");
+    fs::write(&file_txt, "text")?;
+    let exec_file = root.join("script.sh");
+    fs::write(&exec_file, "echo hello")?;
+
+    // Make executable on Unix-like systems
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&exec_file)?.permissions();
+        perms.set_mode(0o755); // rwxr-xr-x
+        fs::set_permissions(&exec_file, perms)?;
+    }
+
+    // Run `tree -F`
+    let mut cmd = Command::cargo_bin("tree")?;
+    cmd.arg(root.to_str().unwrap()).arg("-F");
+    let output = cmd.output()?;
+    cmd.assert().success();
+    let content = String::from_utf8(output.stdout)?;
+    println!("Content with -F:\n{}", content);
+
+    // Assertions
+    assert!(content.contains("sub_dir/"), "Expected directory indicator not found");
+    assert!(content.contains("file.txt"), "Expected file without indicator not found"); // No indicator for normal file
+    assert!(!content.contains("file.txt/") && !content.contains("file.txt*"), "File.txt should not have indicators");
+    
+    #[cfg(unix)]
+    {
+        assert!(content.contains("script.sh*"), "Expected executable indicator not found on Unix");
+    }
+    #[cfg(not(unix))] // On Windows, expect no indicator
+    {
+        assert!(content.contains("script.sh"), "Expected script.sh without indicator not found on Windows");
+        assert!(!content.contains("script.sh*"), "Script.sh should not have executable indicator on Windows");
+    }
+
+    // Check summary
+    assert!(content.contains("1 directory, 2 files"), "Summary incorrect");
 
     Ok(())
 }

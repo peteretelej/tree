@@ -69,6 +69,9 @@ struct Cli {
 
     #[arg(long = "dirsfirst", help = "List directories before files.")]
     dirs_first: bool,
+
+    #[arg(short = 'F', long = "classify", help = "Append indicator (one of */=@|%>) to entries.")]
+    classify: bool,
 }
 
 fn main() {
@@ -107,6 +110,7 @@ fn main() {
         output_file: cli.output_file.clone(),
         file_limit: cli.file_limit,
         dirs_first: cli.dirs_first,
+        classify: cli.classify,
     };
 
     if let Err(e) = list_directory(&cli.path, &options) {

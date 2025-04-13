@@ -32,7 +32,7 @@ Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tre
 - [x] Sort output by last modification time (`-t`)
 - [x] Reverse sort order (`-r`)
 - [x] Print last modification date (`-D`)
-- [ ] Append file type indicators (`/`, `*`, etc.) (`-F`)
+- [x] Append file type indicators (`/`, `*`, etc.) (`-F`)
 - [ ] Omit summary report (`--noreport`)
 - [ ] Print permissions (`-p`)
 

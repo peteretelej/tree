@@ -5,6 +5,10 @@ use std::fs::{OpenOptions};
 use std::io::{BufWriter, Write};
 use std::io;
 
+// Add import for Unix permissions
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
+
 use crate::rust_tree::display::colorize;
 use crate::rust_tree::options::TreeOptions;
 use crate::rust_tree::utils::bytes_to_human_readable;
@@ -98,6 +102,35 @@ fn format_entry_line(
         colorize(entry, &name_part)
     };
     line.push_str(&colored_name);
+
+    // --- Append indicator if -F/--classify is enabled --- 
+    if options.classify {
+        let metadata = entry.metadata()?; // Already fetched file_type, get metadata now
+        let file_type = metadata.file_type(); // Use metadata's file_type
+        let indicator = if file_type.is_dir() {
+            "/"
+        } else if file_type.is_symlink() {
+            "@"
+        // Executable check: only on Unix, requires PermissionsExt trait
+        } else if file_type.is_file() {
+            #[cfg(unix)]
+            {
+                // Check execute bit for user, group, or others
+                if metadata.permissions().mode() & 0o111 != 0 {
+                    "*"
+                } else {
+                    "" // Not executable
+                }
+            }
+            #[cfg(not(unix))] // On non-Unix, files don't get '*' from us
+            {
+                ""
+            }
+        } else {
+            "" // Default: no indicator for other types (sockets, fifos, etc.)
+        };
+        line.push_str(indicator);
+    }
 
     // --- Size (optional) ---
     let file_type = entry.file_type()?;
