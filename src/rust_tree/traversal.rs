@@ -6,6 +6,23 @@ use crate::rust_tree::display::colorize;
 use crate::rust_tree::options::TreeOptions;
 use crate::rust_tree::utils::bytes_to_human_readable;
 
+fn normalize_pattern(pattern: &str) -> String {
+    // Convert Windows path separators to Unix style for consistent matching
+    pattern.replace('\\', "/").trim().to_string()
+}
+
+fn matches_any_pattern(name: &str, pattern: &glob::Pattern) -> bool {
+    let normalized_name = normalize_pattern(name);
+    pattern.as_str()
+        .split('|')
+        .any(|p| {
+            let normalized_pattern = normalize_pattern(p);
+            glob::Pattern::new(&normalized_pattern)
+                .map(|single_pattern| single_pattern.matches(&normalized_name))
+                .unwrap_or(false)
+        })
+}
+
 pub fn traverse_directory<P: AsRef<Path>>(
     root_path: P,
     current_path: &Path,
@@ -25,43 +42,53 @@ pub fn traverse_directory<P: AsRef<Path>>(
         let path = entry.path();
         let is_entry_last = index == last_index;
 
-        // Check if hidden files and directories are allowed
         let is_hidden = path
             .file_name()
             .map(|name| name.to_string_lossy().starts_with('.'))
             .unwrap_or(false);
-        if !options.all_files && is_hidden {
+
+        let should_skip = match (options.all_files, is_hidden, options.level) {
+            (false, true, _) => true,
+            (_, _, Some(max_depth)) if depth >= max_depth as usize => true,
+            _ => false
+        };
+        if should_skip {
             continue;
         }
-        if options.level.is_some() && depth >= options.level.unwrap() as usize {
-            continue;
-        }
-        if options.pattern_glob.is_some() && !path.is_dir() {
-            let pattern_glob = options.pattern_glob.as_ref().unwrap();
-            let file_name = path.file_name().unwrap().to_string_lossy();
-            if !pattern_glob.matches(&file_name) {
+
+        let file_name = path.file_name().unwrap().to_string_lossy();
+        if let Some(exclude_pattern) = &options.exclude_pattern {
+            if matches_any_pattern(&file_name, exclude_pattern) {
                 continue;
             }
         }
-        if options.dir_only && !path.is_dir() {
+
+        let is_dir = path.is_dir();
+        let should_include = match (&options.pattern_glob, is_dir) {
+            (Some(pattern), false) => matches_any_pattern(&file_name, pattern),
+            _ => true,
+        };
+        if !should_include {
             continue;
         }
 
-        // Print indentation
+        if options.dir_only && !is_dir {
+            continue;
+        }
+
         let root_path_buf = root_path.as_ref().to_path_buf();
         let current_path_buf = current_path.to_path_buf();
         if !options.no_indent && current_path_buf != root_path_buf {
-            for i in 0..depth {
-                if last_entry_depths.contains(&i) {
-                    print!("    ");
+            for depth_level in 0..depth {
+                let indent = if last_entry_depths.contains(&depth_level) {
+                    "    "
                 } else {
-                    let vertical_line = if options.ascii { "|   " } else { "│   " };
-                    print!("{}", vertical_line);
-                }
+                    if options.ascii { "|   " } else { "│   " }
+                };
+                print!("{}", indent);
             }
         }
 
-        // Print file/directory name with prefix
         let prefix = match (options.no_indent, is_entry_last, options.ascii) {
             (true, _, _) => "",
             (false, true, true) => "+---",
@@ -70,20 +97,20 @@ pub fn traverse_directory<P: AsRef<Path>>(
             (false, false, false) => "├── ",
         };
 
-        let name = if options.full_path {
+        let display_name = if options.full_path {
+            // Use platform-specific display for full paths
             path.display().to_string()
         } else {
             entry.file_name().to_string_lossy().to_string()
         };
-        let colored_name = if options.no_color || !options.color {
-            name
+        let formatted_name = if options.no_color || !options.color {
+            display_name
         } else {
-            colorize(&entry, name)
+            colorize(&entry, display_name)
         };
-        print!("{}{}", prefix, colored_name);
+        print!("{}{}", prefix, formatted_name);
 
-        if entry.file_type()?.is_dir() {
-            // If it's a directory, recurse into it
+        if is_dir {
             if !is_hidden {
                 stats.0 += 1;
             }
@@ -104,19 +131,17 @@ pub fn traverse_directory<P: AsRef<Path>>(
                 last_entry_depths.remove(&depth);
             }
         } else {
-            // If it's a file and the size option is set, print its size
             if !is_hidden {
                 stats.1 += 1;
             }
             if options.print_size || options.human_readable {
-                let metadata = entry.metadata()?;
-                let size = metadata.len();
-                let size_str = if options.human_readable {
+                let size = entry.metadata()?.len();
+                let size_display = if options.human_readable {
                     format!(" ({})", bytes_to_human_readable(size))
                 } else {
                     format!(" ({:5}B)", size)
                 };
-                print!("{}", size_str);
+                print!("{}", size_display);
             }
             println!();
         }

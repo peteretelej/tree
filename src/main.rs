@@ -21,6 +21,9 @@ struct Cli {
     #[arg(short = 'P', long = "pattern", help = "List only those files that match the wild-card pattern. Note: you must use the -a option to also consider those files beginning with a dot '.' for matching.")]
     pattern: Option<String>,
 
+    #[arg(short = 'I', long = "exclude", help = "Do not list files that match the wild-card pattern.")]
+    exclude: Option<String>,
+
     #[arg(short = 'f', long = "full-path", help = "Prints the full path prefix for each file.")]
     full_path: bool,
 
@@ -56,6 +59,13 @@ fn main() {
         })
     });
 
+    let exclude_pattern: Option<Pattern> = cli.exclude.map(|pattern| {
+        Pattern::new(&pattern).unwrap_or_else(|_| {
+            eprintln!("Error: Invalid exclude pattern.");
+            std::process::exit(1);
+        })
+    });
+
     let options = TreeOptions {
         all_files: cli.all_files,
         level: cli.level,
@@ -65,6 +75,7 @@ fn main() {
         print_size: cli.print_size,
         human_readable: cli.human_readable,
         pattern_glob,
+        exclude_pattern,
         color: cli.color,
         no_color: cli.no_color,
         ascii: cli.ascii,

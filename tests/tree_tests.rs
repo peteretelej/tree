@@ -172,3 +172,27 @@ fn test_ascii_mode() {
             || (default.contains("|") && default.contains("+---"))
     );
 }
+
+#[test]
+fn test_exclude_pattern() {
+    // Test basic exclude
+    let output = run_cmd(&["-I", "*.txt", "tests/fixtures/basic"]);
+    assert!(!output.contains("file1.txt"), "Should not show .txt files");
+    assert!(!output.contains("file2.txt"), "Should not show .txt files");
+    assert!(output.contains("dir1"), "Should still show directories");
+
+    // Test exclude with hidden files
+    let with_hidden = run_cmd(&["-I", "*.txt", "-a", "tests/fixtures/hidden"]);
+    assert!(!with_hidden.contains(".hidden.txt"), "Should not show hidden .txt files when excluded");
+    
+    // Test exclude pattern with directories
+    let exclude_dir = run_cmd(&["-I", "dir1", "tests/fixtures/basic"]);
+    assert!(!exclude_dir.contains("dir1"), "Should not show excluded directory");
+    assert!(exclude_dir.contains("dir2"), "Should show non-excluded directory");
+
+    // Test multiple patterns
+    let multiple = run_cmd(&["-I", "*.txt|dir1", "tests/fixtures/basic"]);
+    assert!(!multiple.contains("file1.txt"), "Should not show .txt files");
+    assert!(!multiple.contains("dir1"), "Should not show dir1");
+    assert!(multiple.contains("dir2"), "Should show non-excluded dir");
+}
