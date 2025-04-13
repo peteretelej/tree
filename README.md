@@ -14,15 +14,17 @@ Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tre
 ## Features
 
 - [x] Display directory structure in a tree-like format
-- [x] Control the depth of recursion with the `-L` flag
-- [x] Show full path with the `-f` flag
-- [x] No indentation with the `-i` flag
-- [x] Display hidden files with the `-a` flag
-- [x] Include specific files matching patterns with the `-P` flag
-- [x] Display the size of each file with the `-s` flag
-- [x] Display the total size of each directory with the `-h` flagS
-- [x] Colorize output with the `-C` flag
-- [x] Turn Colorization off with the `-n` flag
+- [x] Control the depth of recursion (`-L` or `--level`)
+- [x] Show full path (`-f` or `--full-path`)
+- [x] No indentation (`-i` or `--no-indent`)
+- [x] Display hidden files (`-a` or `--all`)
+- [x] Include specific files matching patterns (`-P` or `--pattern`)
+- [x] Display the size of each file (`-s` or `--size`)
+- [x] Display the total size of each directory (`-h` or `--human-readable`)
+- [x] Colorize output (`-C` or `--color`)
+- [x] Turn Colorization off (`-n` or `--no-color`)
+- [x] Use ASCII characters for tree display (`-A` or `--ascii`)
+- [x] List directories only (`-d` or `--directories`)
 - [ ] Exclude specific files matching patterns with the `-I` flag
 - [ ] Send output to filename with `-o` flag
 - [ ] Do not descend directories that contain more a more than # entries with `--filelimit` flag
@@ -48,7 +50,7 @@ git clone https://github.com/peteretelej/tree.git
 cd tree
 cargo build --release
 
-./target/release/tree -L 2 .
+./target/release/tree -L 2 .  # or use --level=2
 # copy tree binary to a PATH directory
 ```
 
@@ -56,16 +58,22 @@ The resulting binary will be located at ./target/release/tree.
 
 ## Usage
 
+## Usage
+
 ```sh
 ./tree [FLAGS] [OPTIONS] [PATH]
 ```
 
-For example
+For example:
 
 ```sh
+# Using short flags
 ./tree -L 2 .
+./tree -a -f -s .
 
-# -L 2: displays upto 2 levels of recursion
+# Using long flags
+./tree --level=2 .
+./tree --all --full-path --size .
 ```
 
 ### Using as Rust Crate
@@ -98,10 +106,53 @@ fn main() {
 }
 ```
 
+## Development
+
+### Code Formatting
+
+This project uses standard Rust formatting. Before submitting a PR:
+
+```bash
+# Format your code
+cargo fmt
+
+# Verify formatting
+cargo fmt --check
+```
+
+#### VS Code Settings
+
+For VS Code users, add this to your settings.json:
+
+```json
+{
+  "[rust]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "rust-lang.rust-analyzer"
+  }
+}
+```
+
+### Git Hooks
+
+To automatically format code before commits:
+
+```bash
+# Make the hook executable
+chmod +x .githooks/pre-commit
+
+# Configure git to use our hooks directory
+git config core.hooksPath .githooks
+```
+
+This will automatically format your code when you commit.
+
 ## Contributing
 
 Contributions are welcome! If you have any suggestions, feature requests, or bug reports, please feel free to open an issue or submit a pull request on the [GitHub repository](https://github.com/peteretelej/tree).
 
 ## License
+
+MIT
 
 MIT
