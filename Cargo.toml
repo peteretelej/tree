@@ -23,6 +23,7 @@ ansi_term = "0.12"
 term = "0.7"
 glob = "0.3.1"
 is_executable = "1.0.1"
+chrono = { version = "0.4.40", features = ["clock"] }
 
 [dev-dependencies]
 tempfile = "3.2"

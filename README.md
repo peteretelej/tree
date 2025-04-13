@@ -30,8 +30,8 @@ Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tre
 - [ ] Do not descend directories that contain more a more than # entries with `--filelimit` flag
 - [ ] List directories first before files with `dirsfirst` flag
 - [x] Sort output by last modification time (`-t`)
-- [ ] Reverse sort order (`-r`)
-- [ ] Print last modification date (`-D`)
+- [x] Reverse sort order (`-r`)
+- [x] Print last modification date (`-D`)
 - [ ] Append file type indicators (`/`, `*`, etc.) (`-F`)
 - [ ] Omit summary report (`--noreport`)
 - [ ] Print permissions (`-p`)

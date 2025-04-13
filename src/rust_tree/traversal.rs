@@ -6,6 +6,7 @@ use std::time::SystemTime;
 use crate::rust_tree::display::colorize;
 use crate::rust_tree::options::TreeOptions;
 use crate::rust_tree::utils::bytes_to_human_readable;
+use chrono::{DateTime, Local};
 
 fn should_skip_entry(
     entry: &fs::DirEntry,
@@ -117,6 +118,22 @@ fn format_entry_line(
         line.push_str(&size_str);
     }
 
+    // --- Modification Date (optional) ---
+    if options.print_mod_date {
+        let metadata = entry.metadata()?;
+        match metadata.modified() {
+            Ok(mod_time) => {
+                let datetime: DateTime<Local> = mod_time.into();
+                // Format like YYYY-MM-DD HH:MM:SS
+                let date_str = format!(" [{}]", datetime.format("%Y-%m-%d %H:%M:%S"));
+                line.push_str(&date_str);
+            }
+            Err(e) => {
+                eprintln!("Warning: Could not get modification date for {:?}: {}", entry.path(), e);
+            }
+        }
+    }
+
     Ok(line)
 }
 
@@ -165,6 +182,11 @@ pub fn traverse_directory<P: AsRef<Path>>(
     } else {
         // Default sort by filename
         entries_info.sort_by_key(|info| info.entry.file_name().to_owned());
+    }
+
+    // Apply reverse sort if requested
+    if options.reverse {
+        entries_info.reverse();
     }
 
     let last_index = entries_info.len().saturating_sub(1);

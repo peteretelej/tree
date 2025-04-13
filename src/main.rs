@@ -54,6 +54,12 @@ struct Cli {
 
     #[arg(short = 't', long = "sort-by-time", help = "Sort output by last modification time instead of alphabetically.")]
     sort_by_time: bool,
+
+    #[arg(short = 'r', long = "reverse", help = "Reverse the sort order.")]
+    reverse: bool,
+
+    #[arg(short = 'D', long = "mod-date", help = "Print the date of last modification.")]
+    print_mod_date: bool,
 }
 
 fn main() {
@@ -87,6 +93,8 @@ fn main() {
         no_color: cli.no_color,
         ascii: cli.ascii,
         sort_by_time: cli.sort_by_time,
+        reverse: cli.reverse,
+        print_mod_date: cli.print_mod_date,
     };
 
     if let Err(e) = list_directory(&cli.path, &options) {
