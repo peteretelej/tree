@@ -16,4 +16,6 @@ pub struct TreeOptions {
     pub sort_by_time: bool,
     pub reverse: bool,
     pub print_mod_date: bool,
+    pub output_file: Option<String>,
+    pub file_limit: Option<u64>,
 }

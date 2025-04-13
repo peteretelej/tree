@@ -60,6 +60,12 @@ struct Cli {
 
     #[arg(short = 'D', long = "mod-date", help = "Print the date of last modification.")]
     print_mod_date: bool,
+
+    #[arg(short = 'o', long = "output", help = "Send output to filename.")]
+    output_file: Option<String>,
+
+    #[arg(long = "filelimit", value_name = "#", help = "Do not descend directories that contain more than # entries.")]
+    file_limit: Option<u64>,
 }
 
 fn main() {
@@ -95,6 +101,8 @@ fn main() {
         sort_by_time: cli.sort_by_time,
         reverse: cli.reverse,
         print_mod_date: cli.print_mod_date,
+        output_file: cli.output_file.clone(),
+        file_limit: cli.file_limit,
     };
 
     if let Err(e) = list_directory(&cli.path, &options) {

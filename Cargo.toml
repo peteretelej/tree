@@ -26,6 +26,7 @@ is_executable = "1.0.1"
 chrono = { version = "0.4.40", features = ["clock"] }
 
 [dev-dependencies]
+assert_cmd = "2.0"
 tempfile = "3.2"
 
 [[bin]]
