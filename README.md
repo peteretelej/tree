@@ -116,7 +116,11 @@ fn main() {
 
 ## Development
 
-### Code Formatting
+### Contributing
+
+Contributions are welcome! If you have any suggestions, feature requests, or bug reports, please feel free to open an issue or submit a pull request on the [GitHub repository](https://github.com/peteretelej/tree).
+
+#### Code Formatting
 
 This project uses standard Rust formatting. Before submitting a PR:
 
@@ -141,89 +145,34 @@ For VS Code users, add this to your settings.json:
 }
 ```
 
-### Git Hooks
+#### Releasing a new version
 
-To automatically format code before commits:
+<details>
+<summary>Tree Release Process</summary>
+
+1. Update version in `Cargo.toml` and create a new version tag:
+
+   ```bash
+   # Update version in Cargo.toml to X.Y.Z
+   git add Cargo.toml
+   git commit -m "chore: bump version to X.Y.Z"
+   git tag -a vX.Y.Z -m "Version X.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+2. The GitHub Actions workflow will:
+   - Create a draft release
+   - Build binaries for: Linux, MacOS, Windows
+   - Generate checksums
+   - Upload the artifacts to the draft release
+
+You can test the release process locally (single target build):
 
 ```bash
-# Make the hook executable
-chmod +x .githooks/pre-commit
-
-# Configure git to use our hooks directory
-git config core.hooksPath .githooks
+goreleaser build --single-target --snapshot --clean
 ```
 
-This will automatically format your code when you commit.
-
-## Contributing
-
-Contributions are welcome! If you have any suggestions, feature requests, or bug reports, please feel free to open an issue or submit a pull request on the [GitHub repository](https://github.com/peteretelej/tree).
-
-### Releasing a new version
-
-Follow these steps to release a new version (e.g., `1.0.0`):
-
-1.  **Create a release branch:**
-
-    ```bash
-    # Replace 1.0.0 with the new version if different
-    git checkout -b release/v1.0.0
-    ```
-
-2.  **Update Version:**
-
-    - Edit `Cargo.toml` and set the `version` field (e.g., `1.0.0`).
-    - Update `Cargo.lock`:
-      ```bash
-      cargo update --package rust_tree
-      ```
-
-3.  **Commit Changes:**
-
-    ```bash
-    git add Cargo.toml Cargo.lock
-    # Use the correct version in the commit message
-    git commit -m "chore: bump version to 1.0.0"
-    ```
-
-4.  **Push Branch:**
-
-    ```bash
-    # Use your actual branch name
-    git push origin release/v1.0.0
-    ```
-
-5.  **Merge:**
-
-    - Create a Pull Request (PR) on GitHub from your release branch to `main`.
-    - Review and merge the PR.
-    - Switch back to the `main` branch and pull the latest changes:
-      ```bash
-      git checkout main
-      git pull origin main
-      ```
-
-6.  **Tag the Release on `main`:**
-
-    - Ensure you are on the `main` branch with the merged changes.
-    - Create an annotated tag:
-      ```bash
-      # Use the correct version for the tag and message
-      git tag -a "v1.0.0" -m "Version 1.0.0"
-      ```
-
-7.  **Push the Tag:**
-
-    ```bash
-    # Use the correct version tag
-    git push origin v1.0.0
-    ```
-
-8.  **Create GitHub Release:**
-    - Go to: [https://github.com/peteretelej/tree/releases/new](https://github.com/peteretelej/tree/releases/new)
-    - Choose the tag you just pushed (e.g., `v1.0.0`).
-    - Fill in the release details.
-    - The release workflow should automatically build and attach binaries.
+</details>
 
 ## License
 

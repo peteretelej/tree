@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::Path;
-use std::time::SystemTime;
+use std::time::{SystemTime, UNIX_EPOCH};
 use std::fs::{OpenOptions};
 use std::io::{BufWriter, Write};
 use std::io;
@@ -15,7 +15,61 @@ use crate::rust_tree::display::colorize;
 use crate::rust_tree::display::format_permissions_unix;
 use crate::rust_tree::options::TreeOptions;
 use crate::rust_tree::utils::bytes_to_human_readable;
-use chrono::{DateTime, Local};
+
+// stdlib date formatting coz chrono is a pain to cross compile
+fn format_date(time: SystemTime) -> String {
+    match time.duration_since(UNIX_EPOCH) {
+        Ok(duration) => {
+            let secs = duration.as_secs();
+            let time_parts = (
+                (secs / 86400) % 36525,            // days since epoch
+                ((secs / 3600) % 24),              // hours
+                ((secs / 60) % 60),                // minutes
+                (secs % 60)                        // seconds
+            );
+            
+            // Start with Unix epoch (1970-01-01) and add days
+            let mut year = 1970;
+            let mut month = 1;
+            let mut day = 1;
+            let mut days_left = time_parts.0;
+            
+            // Simple date calculation - consider leap years, etc.
+            while days_left > 0 {
+                let days_in_year = if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 { 366 } else { 365 };
+                if days_left >= days_in_year {
+                    days_left -= days_in_year;
+                    year += 1;
+                } else {
+                    let days_in_month = match month {
+                        2 => if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 { 29 } else { 28 },
+                        4 | 6 | 9 | 11 => 30,
+                        _ => 31
+                    };
+                    
+                    if days_left >= days_in_month {
+                        days_left -= days_in_month;
+                        month += 1;
+                        if month > 12 {
+                            month = 1;
+                            year += 1;
+                        }
+                    } else {
+                        day += days_left as u32;
+                        days_left = 0;
+                    }
+                }
+            }
+            
+            format!(
+                "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
+                year, month, day, 
+                time_parts.1, time_parts.2, time_parts.3
+            )
+        },
+        Err(_) => String::from("Unknown date")
+    }
+}
 
 fn should_skip_entry(
     entry: &fs::DirEntry,
@@ -165,9 +219,7 @@ fn format_entry_line(
     if options.print_mod_date {
         match metadata.modified() {
             Ok(mod_time) => {
-                let datetime: DateTime<Local> = mod_time.into();
-                // Format like YYYY-MM-DD HH:MM:SS
-                let date_str = format!(" [{}]", datetime.format("%Y-%m-%d %H:%M:%S"));
+                let date_str = format!(" [{}]", format_date(mod_time));
                 line.push_str(&date_str);
             }
             Err(e) => {

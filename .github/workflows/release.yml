@@ -1,120 +1,54 @@
 name: Release
 
 on:
-  release:
-    types: [created]
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
 
 permissions:
   contents: write
-  pull-requests: read
 
 jobs:
-  check-version:
+  create-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: taiki-e/create-gh-release-action@v1
         with:
-          fetch-depth: 0
-      - name: Check if version was updated
-        run: |
-          # Get the version from Cargo.toml
-          CURRENT_VERSION=$(grep '^version = ' Cargo.toml | cut -d '"' -f 2)
+          # (optional) title of the release
+          title: tree Release ${{ github.ref_name }}
+          # (required) GitHub token for creating GitHub Releases.
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-          # Get the previous release tag
-          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "none")
-
-          if [ "$PREV_TAG" != "none" ]; then
-            # Get the version from the previous release's Cargo.toml
-            PREV_VERSION=$(git show "$PREV_TAG:Cargo.toml" | grep '^version = ' | cut -d '"' -f 2)
-            
-            if [ "$CURRENT_VERSION" = "$PREV_VERSION" ]; then
-              echo "Error: Version in Cargo.toml ($CURRENT_VERSION) has not been updated from previous release ($PREV_VERSION)"
-              exit 1
-            fi
-          fi
-
-          echo "Version check passed: $CURRENT_VERSION"
-          echo "current_version=$CURRENT_VERSION" >> $GITHUB_OUTPUT
-
-  generate-cli-docs:
-    needs: check-version
-    runs-on: ubuntu-latest
-    outputs:
-      help_text: ${{ steps.get_help.outputs.help_text }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Setup Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-      - name: Build CLI
-        run: cargo build --release
-      - name: Get help text
-        id: get_help
-        run: |
-          HELP_TEXT="$(./target/release/tree --help)"
-          echo "help_text<<EOF" >> $GITHUB_OUTPUT
-          echo "$HELP_TEXT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-  update-release-notes:
-    needs: generate-cli-docs
-    runs-on: ubuntu-latest
-    steps:
-      - name: Update Release Notes
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HELP_TEXT: ${{ needs.generate-cli-docs.outputs.help_text }}
-        run: |
-          # Get the current release notes (which will include the auto-generated notes)
-          RELEASE_ID=$(gh api /repos/${{ github.repository }}/releases/tags/${{ github.ref_name }} --jq .id)
-          CURRENT_BODY=$(gh api /repos/${{ github.repository }}/releases/$RELEASE_ID --jq .body)
-
-          # Create help section
-          HELP_SECTION='
-
-          ---
-
-          <details><summary>CLI Usage</summary>
-
-          ```
-          '"$HELP_TEXT"'
-          ```
-          </details>'
-
-          # Combine notes while preserving auto-generated content
-          NEW_BODY="${CURRENT_BODY}${HELP_SECTION}"
-
-          # Update release notes
-          gh api --method PATCH /repos/${{ github.repository }}/releases/$RELEASE_ID \
-            -f body="$NEW_BODY"
-
-  release:
-    needs: update-release-notes
-    name: release ${{ matrix.target }}
-    runs-on: ubuntu-latest
+  upload-assets:
+    needs: create-release
     strategy:
-      fail-fast: false
       matrix:
         include:
-          - target: x86_64-pc-windows-gnu
-            archive: zip
-            name: ${{ github.event.repository.name }}_${{  github.ref_name }}_Windows_64bit
-          - target: x86_64-unknown-linux-musl
-            archive: tar.gz
-            name: ${{ github.event.repository.name }}_${{  github.ref_name }}_x86_64-unknown-linux-musl
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
           - target: x86_64-apple-darwin
-            archive: zip
-            name: ${{ github.event.repository.name }}_${{  github.ref_name }}_x86_64-apple-darwin
+            os: macos-latest
+          - target: aarch64-apple-darwin
+            os: macos-latest
+          - target: x86_64-pc-windows-gnu
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@master
-      - name: Compile and release
-        uses: rust-build/rust-build.action@v1.4.3
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: stable
-          RUSTTARGET: ${{ matrix.target }}
-          ARCHIVE_TYPES: ${{ matrix.archive }}
-          ARCHIVE_NAME: ${{ matrix.name }}
+          targets: ${{ matrix.target }}
+
+      - name: Build and upload assets
+        uses: taiki-e/upload-rust-binary-action@v1
+        with:
+          bin: tree
+          # Customize archive name to include the tag and target
+          archive: ${{ github.event.repository.name }}-${{ github.ref_name }}-${{ matrix.target }}
+          target: ${{ matrix.target }}
+          token: ${{ secrets.GITHUB_TOKEN }}
