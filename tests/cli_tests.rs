@@ -62,6 +62,12 @@ struct Cli {
 
     #[arg(short = 'F', long = "classify")]
     classify: bool,
+
+    #[arg(long = "noreport")]
+    no_report: bool,
+
+    #[arg(short = 'p')]
+    print_permissions: bool,
 }
 
 #[test]
@@ -351,6 +357,101 @@ fn test_classify_flag() -> Result<(), Box<dyn std::error::Error>> {
 
     // Check summary
     assert!(content.contains("1 directory, 2 files"), "Summary incorrect");
+
+    Ok(())
+}
+
+#[test]
+fn test_no_report_flag() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempdir()?;
+    let root = dir.path();
+    fs::write(root.join("file1.txt"), "1")?;
+    fs::write(root.join("file2.txt"), "2")?;
+
+    // --- Test 1: Default (with report) --- 
+    let mut cmd1 = Command::cargo_bin("tree")?;
+    cmd1.arg(root.to_str().unwrap());
+    let output1 = cmd1.output()?;
+    cmd1.assert().success();
+    let content1 = String::from_utf8(output1.stdout)?;
+    println!("Content with report:\n{}", content1);
+
+    assert!(content1.contains("file1.txt"));
+    assert!(content1.contains("file2.txt"));
+    assert!(content1.contains("0 directories, 2 files"), "Expected summary report not found");
+
+    // --- Test 2: With --noreport --- 
+    let mut cmd2 = Command::cargo_bin("tree")?;
+    cmd2.arg(root.to_str().unwrap()).arg("--noreport");
+    let output2 = cmd2.output()?;
+    cmd2.assert().success();
+    let content2 = String::from_utf8(output2.stdout)?;
+    println!("Content with --noreport:\n{}", content2);
+
+    assert!(content2.contains("file1.txt"));
+    assert!(content2.contains("file2.txt"));
+    assert!(!content2.contains("directories, ") && !content2.contains("files"), "Summary report should be omitted");
+    // A more robust check: ensure the last line doesn't match the summary pattern
+    let last_line = content2.trim_end().lines().last().unwrap_or("");
+    assert!(!last_line.contains("directories") && !last_line.contains("files"), "Last line appears to be the summary report: {}", last_line);
+
+    Ok(())
+}
+
+#[test]
+fn test_permissions_flag() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempdir()?;
+    let root = dir.path();
+    let sub_dir = root.join("sub_dir");
+    fs::create_dir(&sub_dir)?;
+    let file_txt = root.join("file.txt");
+    fs::write(&file_txt, "text")?;
+
+    // Set specific permissions if on Unix
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        // Set 644 for file.txt
+        let mut perms_file = fs::metadata(&file_txt)?.permissions();
+        perms_file.set_mode(0o644); // rw-r--r--
+        fs::set_permissions(&file_txt, perms_file)?;
+        // Default perms for dir (usually 755 or 775)
+        let perms_dir = fs::metadata(&sub_dir)?.permissions();
+        println!("Test Setup: Subdir mode is {:o}", perms_dir.mode());
+    }
+
+    // Run `tree -p`
+    let mut cmd = Command::cargo_bin("tree")?;
+    cmd.arg(root.to_str().unwrap()).arg("-p");
+    let output = cmd.output()?;
+    cmd.assert().success();
+    let content = String::from_utf8(output.stdout)?;
+    println!("Content with -p:\n{}", content);
+
+    // Assertions
+    #[cfg(unix)]
+    {
+        // Check for specific permission strings
+        assert!(content.contains("[-rw-r--r--]"), "Expected file permissions not found");
+        // Directory permissions depend on umask, check for the dir prefix
+        assert!(content.contains("[d"), "Expected directory permissions prefix not found");
+        assert!(
+            content.find("[-rw-r--r--]").unwrap_or(0) < content.find("file.txt").unwrap_or(0),
+            "Permissions should precede file name"
+        );
+        assert!(
+            content.find("[drw").unwrap_or(usize::MAX) < content.find("sub_dir").unwrap_or(usize::MAX),
+            "Permissions should precede dir name"
+        );
+    }
+    #[cfg(not(unix))] // On Windows, expect no permission strings
+    {
+        assert!(!content.contains("["), "Permissions brackets should not appear on Windows");
+        assert!(!content.contains("]"), "Permissions brackets should not appear on Windows");
+    }
+
+    // Check summary is still there
+    assert!(content.contains("1 directory, 1 file"), "Summary incorrect");
 
     Ok(())
 }

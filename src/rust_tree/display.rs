@@ -32,3 +32,34 @@ pub fn colorize(entry: &fs::DirEntry, text: &str) -> String {
         text.to_string()
     }
 }
+
+// --- Permissions Formatting (Unix only) --- 
+#[cfg(unix)]
+pub fn format_permissions_unix(mode: u32, is_dir: bool) -> String {
+    let mut perms = String::with_capacity(10); // [drwxrwxrwx]
+
+    perms.push(if is_dir { 'd' } else { '-' });
+
+    // Owner permissions
+    perms.push(if mode & 0o400 != 0 { 'r' } else { '-' });
+    perms.push(if mode & 0o200 != 0 { 'w' } else { '-' });
+    perms.push(if mode & 0o100 != 0 { 'x' } else { '-' }); // Consider setuid/setgid later?
+
+    // Group permissions
+    perms.push(if mode & 0o040 != 0 { 'r' } else { '-' });
+    perms.push(if mode & 0o020 != 0 { 'w' } else { '-' });
+    perms.push(if mode & 0o010 != 0 { 'x' } else { '-' }); // Consider setgid later?
+
+    // Other permissions
+    perms.push(if mode & 0o004 != 0 { 'r' } else { '-' });
+    perms.push(if mode & 0o002 != 0 { 'w' } else { '-' });
+    perms.push(if mode & 0o001 != 0 { 'x' } else { '-' }); // Consider sticky bit later?
+
+    format!("[{}]", perms)
+}
+
+// Stub for non-Unix platforms
+#[cfg(not(unix))]
+pub fn format_permissions_unix(_mode: u32, _is_dir: bool) -> String {
+    String::new() // No permissions string on non-Unix
+}

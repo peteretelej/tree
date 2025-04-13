@@ -10,6 +10,9 @@ use std::io;
 use std::os::unix::fs::PermissionsExt;
 
 use crate::rust_tree::display::colorize;
+// Conditionally import the permissions formatter only on Unix
+#[cfg(unix)]
+use crate::rust_tree::display::format_permissions_unix;
 use crate::rust_tree::options::TreeOptions;
 use crate::rust_tree::utils::bytes_to_human_readable;
 use chrono::{DateTime, Local};
@@ -65,6 +68,23 @@ fn format_entry_line(
 ) -> std::io::Result<String> {
     let path = entry.path();
     let mut line = String::new();
+    let metadata = entry.metadata()?; // Get metadata early, needed for permissions and potentially size/date/type
+    let file_type = metadata.file_type();
+
+    // --- Permissions (optional, Unix only) ---
+    if options.print_permissions {
+        #[cfg(unix)]
+        {
+            let mode = metadata.permissions().mode();
+            let perms_str = format_permissions_unix(mode, file_type.is_dir());
+            line.push_str(&perms_str);
+            line.push(' '); // Add space after permissions
+        }
+        #[cfg(not(unix))] // On non-unix, add placeholder space? Or just nothing?
+        { 
+            // Currently adds nothing on non-Unix platforms
+        }
+    }
 
     // --- Indentation ---
     // Indent only if not disabled and depth > 0.
@@ -105,8 +125,6 @@ fn format_entry_line(
 
     // --- Append indicator if -F/--classify is enabled --- 
     if options.classify {
-        let metadata = entry.metadata()?; // Already fetched file_type, get metadata now
-        let file_type = metadata.file_type(); // Use metadata's file_type
         let indicator = if file_type.is_dir() {
             "/"
         } else if file_type.is_symlink() {
@@ -133,9 +151,7 @@ fn format_entry_line(
     }
 
     // --- Size (optional) ---
-    let file_type = entry.file_type()?;
     if !file_type.is_dir() && (options.print_size || options.human_readable) {
-        let metadata = entry.metadata()?;
         let size = metadata.len();
         let size_str = if options.human_readable {
             format!(" [{}]", bytes_to_human_readable(size))
@@ -147,7 +163,6 @@ fn format_entry_line(
 
     // --- Modification Date (optional) ---
     if options.print_mod_date {
-        let metadata = entry.metadata()?;
         match metadata.modified() {
             Ok(mod_time) => {
                 let datetime: DateTime<Local> = mod_time.into();
@@ -380,10 +395,14 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
         &[], // Initial empty indent state
     )?;
 
-    //println!("\n{} directories, {} files", stats.0, stats.1);
-    let dir_str = if stats.0 == 1 { "directory" } else { "directories" };
-    let file_str = if stats.1 == 1 { "file" } else { "files" };
-    writeln!(writer, "\n{} {}, {} {}", stats.0, dir_str, stats.1, file_str)?;
+    // Print summary only if --noreport is not set
+    if !options.no_report {
+        //println!("\n{} directories, {} files", stats.0, stats.1);
+        let dir_str = if stats.0 == 1 { "directory" } else { "directories" };
+        let file_str = if stats.1 == 1 { "file" } else { "files" };
+        writeln!(writer, "\n{} {}, {} {}", stats.0, dir_str, stats.1, file_str)?;
+    }
+    
     writer.flush()?; // Explicitly flush the buffer
     Ok(())
 }

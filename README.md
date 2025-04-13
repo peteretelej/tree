@@ -33,8 +33,8 @@ Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tre
 - [x] Reverse sort order (`-r`)
 - [x] Print last modification date (`-D`)
 - [x] Append file type indicators (`/`, `*`, etc.) (`-F`)
-- [ ] Omit summary report (`--noreport`)
-- [ ] Print permissions (`-p`)
+- [x] Omit summary report (`--noreport`)
+- [x] Print permissions (`-p`)
 
 Please feel to open PR requests in case interested in implementing some of the pending features.
 

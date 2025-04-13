@@ -336,7 +336,7 @@ fn test_exclude_pattern() {
     assert!(exclude_dir.contains("dir2"), "Should show non-excluded directory");
 
     // Test multiple patterns (glob crate doesn't support `|` directly in one pattern)
-    // Need to handle this in the argument parsing or logic if required, 
+    // Need to handle this in the argument parsing or logic if required,
     // but current implementation likely treats it as a literal filename part.
     // For now, test exclusion of a file with '|' if the pattern syntax supported it.
     // Let's assume the glob library handles basic wildcards well.

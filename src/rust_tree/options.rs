@@ -20,4 +20,6 @@ pub struct TreeOptions {
     pub file_limit: Option<u64>,
     pub dirs_first: bool,
     pub classify: bool,
+    pub no_report: bool,
+    pub print_permissions: bool,
 }

@@ -72,6 +72,12 @@ struct Cli {
 
     #[arg(short = 'F', long = "classify", help = "Append indicator (one of */=@|%>) to entries.")]
     classify: bool,
+
+    #[arg(long = "noreport", help = "Omits printing of the file and directory report at the end of the tree listing.")]
+    no_report: bool,
+
+    #[arg(short = 'p', help = "Print the protections for each file (unix only).")]
+    print_permissions: bool,
 }
 
 fn main() {
@@ -111,6 +117,8 @@ fn main() {
         file_limit: cli.file_limit,
         dirs_first: cli.dirs_first,
         classify: cli.classify,
+        no_report: cli.no_report,
+        print_permissions: cli.print_permissions,
     };
 
     if let Err(e) = list_directory(&cli.path, &options) {
