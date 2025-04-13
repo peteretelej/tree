@@ -17,12 +17,9 @@ changelog:
     - title: 📝 Documentation
       labels:
         - documentation
-    - title: 🔒 Security Updates
+    - title: 🔧 DevOps / Build Tooling
       labels:
-        - security
-    - title: 🔧 Maintenance
-      labels:
-        - dependencies
+        - devops
     - title: ⚙️ Other Changes
       labels:
         - "*"

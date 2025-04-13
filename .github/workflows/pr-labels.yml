@@ -17,5 +17,5 @@ jobs:
         with:
           mode: minimum
           count: 1
-          labels: "bug, enhancement, documentation, dependencies, security"
-          message: "Please add at least one classification label to this PR (bug, enhancement, documentation, dependencies, or security)"
+          labels: "bug, enhancement, documentation, devops"
+          message: "Please add at least one label to categorize this PR (bug, enhancement, documentation, or devops)"
