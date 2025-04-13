@@ -20,15 +20,21 @@ Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tre
 - [x] Display hidden files (`-a` or `--all`)
 - [x] Include specific files matching patterns (`-P` or `--pattern`)
 - [x] Display the size of each file (`-s` or `--size`)
-- [x] Display the total size of each directory (`-h` or `--human-readable`)
+- [x] Display the total size of each directory (`-H` or `--human-readable`)
 - [x] Colorize output (`-C` or `--color`)
 - [x] Turn Colorization off (`-n` or `--no-color`)
 - [x] Use ASCII characters for tree display (`-A` or `--ascii`)
 - [x] List directories only (`-d` or `--directories`)
 - [x] Exclude specific files matching patterns (`-I` or `--exclude`)
-- [ ] Send output to filename with `-o` flag
-- [ ] Do not descend directories that contain more a more than # entries with `--filelimit` flag
-- [ ] List directories first before files with `dirsfirst` flag
+- [x] Send output to filename with `-o` flag
+- [x] Do not descend directories that contain more than # entries with `--filelimit` flag
+- [x] List directories first before files with `dirsfirst` flag
+- [x] Sort output by last modification time (`-t`)
+- [x] Reverse sort order (`-r`)
+- [x] Print last modification date (`-D`)
+- [x] Append file type indicators (`/`, `*`, etc.) (`-F`)
+- [x] Omit summary report (`--noreport`)
+- [x] Print permissions (`-p`)
 
 Please feel to open PR requests in case interested in implementing some of the pending features.
 
@@ -155,38 +161,69 @@ Contributions are welcome! If you have any suggestions, feature requests, or bug
 
 ### Releasing a new version
 
-To release a new version:
+Follow these steps to release a new version (e.g., `1.0.0`):
 
-1. Update the version in `Cargo.toml`
-2. Update `Cargo.lock`
+1.  **Create a release branch:**
 
-```bash
-# 2. Update Cargo.lock
-cargo update --package rust_tree
-```
+    ```bash
+    # Replace 1.0.0 with the new version if different
+    git checkout -b release/v1.0.0
+    ```
 
-3. Commit and tag
+2.  **Update Version:**
 
-```bash
-git add Cargo.toml Cargo.lock
-git commit -m "chore: bump version to 0.1.5"  # Replace 0.1.5 with new version
-git tag -a "v0.1.5" -m "Version 0.1.5"       # Replace 0.1.5 with new version
-```
+    - Edit `Cargo.toml` and set the `version` field (e.g., `1.0.0`).
+    - Update `Cargo.lock`:
+      ```bash
+      cargo update --package rust_tree
+      ```
 
-4. Push changes
+3.  **Commit Changes:**
 
-```bash
-git push origin main
-git push origin v0.1.5                        # Replace 0.1.5 with new version
-```
+    ```bash
+    git add Cargo.toml Cargo.lock
+    # Use the correct version in the commit message
+    git commit -m "chore: bump version to 1.0.0"
+    ```
 
-5. Create a new release on GitHub
-   Visit: https://github.com/peteretelej/tree/releases/new
+4.  **Push Branch:**
 
-- Choose the tag you just pushed
-- The release workflow will automatically:
-  - Generate CLI documentation
-  - Build binaries for Windows, Linux, and MacOS
+    ```bash
+    # Use your actual branch name
+    git push origin release/v1.0.0
+    ```
+
+5.  **Merge:**
+
+    - Create a Pull Request (PR) on GitHub from your release branch to `main`.
+    - Review and merge the PR.
+    - Switch back to the `main` branch and pull the latest changes:
+      ```bash
+      git checkout main
+      git pull origin main
+      ```
+
+6.  **Tag the Release on `main`:**
+
+    - Ensure you are on the `main` branch with the merged changes.
+    - Create an annotated tag:
+      ```bash
+      # Use the correct version for the tag and message
+      git tag -a "v1.0.0" -m "Version 1.0.0"
+      ```
+
+7.  **Push the Tag:**
+
+    ```bash
+    # Use the correct version tag
+    git push origin v1.0.0
+    ```
+
+8.  **Create GitHub Release:**
+    - Go to: [https://github.com/peteretelej/tree/releases/new](https://github.com/peteretelej/tree/releases/new)
+    - Choose the tag you just pushed (e.g., `v1.0.0`).
+    - Fill in the release details.
+    - The release workflow should automatically build and attach binaries.
 
 ## License
 

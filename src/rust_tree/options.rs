@@ -13,4 +13,13 @@ pub struct TreeOptions {
     pub color: bool,
     pub no_color: bool,
     pub ascii: bool,
+    pub sort_by_time: bool,
+    pub reverse: bool,
+    pub print_mod_date: bool,
+    pub output_file: Option<String>,
+    pub file_limit: Option<u64>,
+    pub dirs_first: bool,
+    pub classify: bool,
+    pub no_report: bool,
+    pub print_permissions: bool,
 }

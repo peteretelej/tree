@@ -1,24 +1,29 @@
 use std::fs;
 use std::path::Path;
+use std::time::SystemTime;
+use std::fs::{OpenOptions};
+use std::io::{BufWriter, Write};
+use std::io;
+
+// Add import for Unix permissions
+#[cfg(unix)]
+use std::os::unix::fs::PermissionsExt;
 
 use crate::rust_tree::display::colorize;
+// Conditionally import the permissions formatter only on Unix
+#[cfg(unix)]
+use crate::rust_tree::display::format_permissions_unix;
 use crate::rust_tree::options::TreeOptions;
 use crate::rust_tree::utils::bytes_to_human_readable;
+use chrono::{DateTime, Local};
 
 fn should_skip_entry(
     entry: &fs::DirEntry,
     options: &TreeOptions,
-    depth: usize,
+    _depth: usize,
 ) -> std::io::Result<bool> {
     let path = entry.path();
     let file_name = path.file_name().and_then(|name| name.to_str());
-
-    // Check depth limit first (most common)
-    if let Some(max_level) = options.level {
-        if depth >= max_level as usize { // depth is 0-indexed, level is 1-indexed
-            return Ok(true); // Skip if depth is at or beyond the limit
-        }
-    }
 
     // Check if hidden
     let is_hidden = file_name.map(|name| name.starts_with('.')).unwrap_or(false);
@@ -29,13 +34,12 @@ fn should_skip_entry(
     // Check exclude pattern FIRST
     if let Some(exclude_pattern) = &options.exclude_pattern {
         if file_name.is_some_and(|name| exclude_pattern.matches(name)) {
-            return Ok(true); // Skip if matches exclude pattern
+            return Ok(true);
         }
     }
 
     // Check include pattern (only if exclude didn't match)
     if let Some(pattern) = &options.pattern_glob {
-        // Directories are not filtered by pattern, only files
         if !path.is_dir() && !file_name.is_some_and(|name| pattern.matches(name)) {
             return Ok(true);
         }
@@ -49,6 +53,12 @@ fn should_skip_entry(
     Ok(false)
 }
 
+// Helper struct to hold entry and its modification time
+struct EntryInfo {
+    entry: fs::DirEntry,
+    mod_time: io::Result<SystemTime>,
+}
+
 // Helper function to format a single line of the tree output
 fn format_entry_line(
     entry: &fs::DirEntry,
@@ -58,6 +68,23 @@ fn format_entry_line(
 ) -> std::io::Result<String> {
     let path = entry.path();
     let mut line = String::new();
+    let metadata = entry.metadata()?; // Get metadata early, needed for permissions and potentially size/date/type
+    let file_type = metadata.file_type();
+
+    // --- Permissions (optional, Unix only) ---
+    if options.print_permissions {
+        #[cfg(unix)]
+        {
+            let mode = metadata.permissions().mode();
+            let perms_str = format_permissions_unix(mode, file_type.is_dir());
+            line.push_str(&perms_str);
+            line.push(' '); // Add space after permissions
+        }
+        #[cfg(not(unix))] // On non-unix, add placeholder space? Or just nothing?
+        { 
+            // Currently adds nothing on non-Unix platforms
+        }
+    }
 
     // --- Indentation ---
     // Indent only if not disabled and depth > 0.
@@ -96,10 +123,35 @@ fn format_entry_line(
     };
     line.push_str(&colored_name);
 
+    // --- Append indicator if -F/--classify is enabled --- 
+    if options.classify {
+        let indicator = if file_type.is_dir() {
+            "/"
+        } else if file_type.is_symlink() {
+            "@"
+        // Executable check: only on Unix, requires PermissionsExt trait
+        } else if file_type.is_file() {
+            #[cfg(unix)]
+            {
+                // Check execute bit for user, group, or others
+                if metadata.permissions().mode() & 0o111 != 0 {
+                    "*"
+                } else {
+                    "" // Not executable
+                }
+            }
+            #[cfg(not(unix))] // On non-Unix, files don't get '*' from us
+            {
+                ""
+            }
+        } else {
+            "" // Default: no indicator for other types (sockets, fifos, etc.)
+        };
+        line.push_str(indicator);
+    }
+
     // --- Size (optional) ---
-    let file_type = entry.file_type()?;
     if !file_type.is_dir() && (options.print_size || options.human_readable) {
-        let metadata = entry.metadata()?;
         let size = metadata.len();
         let size_str = if options.human_readable {
             format!(" [{}]", bytes_to_human_readable(size))
@@ -109,10 +161,26 @@ fn format_entry_line(
         line.push_str(&size_str);
     }
 
+    // --- Modification Date (optional) ---
+    if options.print_mod_date {
+        match metadata.modified() {
+            Ok(mod_time) => {
+                let datetime: DateTime<Local> = mod_time.into();
+                // Format like YYYY-MM-DD HH:MM:SS
+                let date_str = format!(" [{}]", datetime.format("%Y-%m-%d %H:%M:%S"));
+                line.push_str(&date_str);
+            }
+            Err(e) => {
+                eprintln!("Warning: Could not get modification date for {:?}: {}", entry.path(), e);
+            }
+        }
+    }
+
     Ok(line)
 }
 
-pub fn traverse_directory<P: AsRef<Path>>(
+pub fn traverse_directory<P: AsRef<Path>, W: Write>(
+    writer: &mut W,
     root_path: P,
     current_path: &Path,
     options: &TreeOptions,
@@ -120,59 +188,166 @@ pub fn traverse_directory<P: AsRef<Path>>(
     stats: &mut (u64, u64),
     indent_state: &[bool],
 ) -> std::io::Result<()> {
-    // Attempt to read directory entries, filter out errors, then collect.
+    // --- 1. Read and Pre-process Directory Entries --- 
     let read_dir_result = fs::read_dir(current_path);
-    let mut entries: Vec<_> = match read_dir_result {
-        Ok(reader) => reader.filter_map(Result::ok).collect(), // Ignore entries that cause an error during iteration
+    let mut entries_info: Vec<EntryInfo> = match read_dir_result {
+        Ok(reader) => reader
+            .filter_map(Result::ok) // Ignore entries that cause an error during iteration
+            .filter(|entry| {
+                // Pre-filter based on options *not* related to recursion limits (level/filelimit)
+                // This ensures stats are counted correctly even if recursion is skipped.
+                match should_skip_entry(entry, options, depth) {
+                    Ok(skip) => !skip,
+                    Err(e) => {
+                        eprintln!(
+                            "Warning: Could not apply filters to entry {:?}: {}",
+                            entry.path(),
+                            e
+                        );
+                        false // Skip if error occurs during filtering
+                    }
+                }
+            })
+            .map(|entry| {
+                // Get metadata/mod_time needed for sorting
+                let mod_time = entry.metadata().and_then(|m| m.modified());
+                if let Err(e) = &mod_time {
+                    eprintln!(
+                        "Warning: Could not get metadata/mod_time for {:?}: {}",
+                        entry.path(),
+                        e
+                    );
+                }
+                EntryInfo { entry, mod_time }
+            })
+            .collect(),
         Err(e) => {
-            // If reading the directory itself fails (e.g., permission denied), print error and skip.
             eprintln!("Error reading directory {:?}: {}", current_path, e);
-            return Ok(()); // Continue traversal for other directories if possible
+            return Ok(());
         }
     };
-    
-    entries.sort_by_key(|entry| entry.file_name().to_owned());
 
-    let last_index = entries.len().saturating_sub(1);
+    // --- 2. Sort Entries --- 
+    if options.dirs_first {
+        // Partition into directories and files, handling potential file_type errors
+        let (mut dirs, mut files): (Vec<EntryInfo>, Vec<EntryInfo>) = std::mem::take(&mut entries_info)
+            .into_iter()
+            .partition(|info| {
+                // Treat entries where file_type fails as non-directories
+                info.entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false)
+            });
 
-    for (index, entry_result) in entries.into_iter().enumerate() {
-        let entry = entry_result;
+        // Define the comparison logic based on sort_by_time
+        let sort_comparison = |a: &EntryInfo, b: &EntryInfo| {
+            if options.sort_by_time {
+                let time_a = a.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
+                let time_b = b.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
+                time_a.cmp(time_b).then_with(|| a.entry.file_name().cmp(&b.entry.file_name()))
+            } else {
+                a.entry.file_name().cmp(&b.entry.file_name())
+            }
+        };
+
+        // Sort directories and files independently
+        dirs.sort_by(sort_comparison);
+        files.sort_by(sort_comparison);
+
+        // Apply reverse if needed
+        if options.reverse {
+            dirs.reverse();
+            files.reverse();
+        }
+
+        // Combine back, dirs first
+        entries_info = dirs;
+        entries_info.append(&mut files);
+
+    } else {
+        // Original sorting logic if dirs_first is not enabled
+        if options.sort_by_time { 
+            entries_info.sort_by(|a, b| {
+                let time_a = a.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
+                let time_b = b.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
+                time_a
+                    .cmp(time_b)
+                    .then_with(|| a.entry.file_name().cmp(&b.entry.file_name()))
+            });
+        } else {
+            entries_info.sort_by_key(|info| info.entry.file_name().to_owned());
+        }
+        if options.reverse {
+            entries_info.reverse();
+        }
+    }
+
+    // --- 4. Iterate, Print, Count Stats, and Recurse (conditionally) --- 
+    let last_index = entries_info.len().saturating_sub(1);
+    for (index, info) in entries_info.into_iter().enumerate() {
+        let entry = info.entry;
         let path = entry.path();
         let is_entry_last = index == last_index;
 
-        // Check if entry should be skipped
-        if should_skip_entry(&entry, options, depth)? {
-            continue;
-        }
-
-        // Format the line for the current entry
+        // Format and print the line for the current entry
         let line = format_entry_line(&entry, options, indent_state, is_entry_last)?;
-        println!("{}", line);
+        writeln!(writer, "{}", line)?;
 
-        // Recurse into directories if necessary
+        // Update stats and decide recursion based on entry type
         if entry.file_type()?.is_dir() {
-            stats.0 += 1;
-            // Recurse ONLY if the NEXT level is within the limit
-            let should_recurse = options.level.is_none()
-                || (depth + 1) < options.level.unwrap() as usize;
+            stats.0 += 1; // Count this directory
 
-            if should_recurse {
-                // Prepare the indent state for the recursive call
+            // --- Check limits specifically for this directory before recursion --- 
+            let mut skip_recursion = false;
+
+            // 1. Check level limit for the *next* level
+            if let Some(max_level) = options.level {
+                // If the next depth (depth + 1) is >= max_level, we should not recurse.
+                // Remember depth is 0-indexed, max_level is 1-indexed.
+                if (depth + 1) >= max_level as usize { 
+                    skip_recursion = true;
+                }
+            }
+
+            // 2. Check file limit (only if level limit doesn't already skip)
+            if !skip_recursion {
+                if let Some(limit) = options.file_limit {
+                    match fs::read_dir(&path) { // Read the *child* directory (`path`) to count its entries
+                        Ok(reader) => {
+                            // Use iterator `count()` for efficiency. 
+                            // This counts *raw* entries, matching standard `tree --filelimit` behavior.
+                            let entry_count = reader.count(); 
+                            if entry_count > limit as usize {
+                                skip_recursion = true;
+                                // Optionally: Add indicator like "[...]" to the printed line if skipped?
+                            }
+                        }
+                        Err(e) => {
+                            // If we can't read the directory to check the limit, log warning but don't skip.
+                            eprintln!(
+                                "Warning: Could not read directory {:?} to check filelimit: {}",
+                                path,
+                                e
+                            );
+                        }
+                    }
+                }
+            }
+            // --- End limit checks --- 
+
+            if !skip_recursion { // Recurse only if no limits apply
                 let mut next_indent_state = indent_state.to_vec();
                 next_indent_state.push(is_entry_last);
-                
                 traverse_directory(
+                    writer,
                     root_path.as_ref(),
-                    &path,
+                    &path, // Recurse into the child directory `path`
                     options,
                     depth + 1,
                     stats,
                     &next_indent_state,
                 )?;
             }
-        } else {
-            stats.1 += 1;
-            // No newline print needed here anymore, handled by format_entry_line + println
+        } else { // It's a file
+            stats.1 += 1; // Count this file
         }
     }
 
@@ -181,6 +356,20 @@ pub fn traverse_directory<P: AsRef<Path>>(
 
 pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io::Result<()> {
     let current_path = path.as_ref();
+
+    // Determine output writer: file or stdout
+    let mut writer: Box<dyn Write> = match &options.output_file {
+        Some(filename) => {
+            let file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true) // Overwrite existing file
+                .open(filename)?;
+            Box::new(BufWriter::new(file))
+        }
+        None => Box::new(BufWriter::new(io::stdout())),
+    };
+
     let display_path = if options.full_path {
         current_path.canonicalize()?.display().to_string()
     } else {
@@ -190,12 +379,14 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
             .unwrap_or(".")
             .to_string()
     };
-    println!("{}", display_path);
+    //println!("{}", display_path);
+    writeln!(writer, "{}", display_path)?; // Use the writer
 
     let mut stats = (0, 0); // (directories, files)
 
     // Start the recursive traversal with empty initial indent state
     traverse_directory(
+        &mut writer, // Pass the writer
         current_path, // Use original path for root comparison
         current_path,
         options,
@@ -204,6 +395,14 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
         &[], // Initial empty indent state
     )?;
 
-    println!("\n{} directories, {} files", stats.0, stats.1);
+    // Print summary only if --noreport is not set
+    if !options.no_report {
+        //println!("\n{} directories, {} files", stats.0, stats.1);
+        let dir_str = if stats.0 == 1 { "directory" } else { "directories" };
+        let file_str = if stats.1 == 1 { "file" } else { "files" };
+        writeln!(writer, "\n{} {}, {} {}", stats.0, dir_str, stats.1, file_str)?;
+    }
+    
+    writer.flush()?; // Explicitly flush the buffer
     Ok(())
 }

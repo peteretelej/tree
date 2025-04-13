@@ -51,6 +51,33 @@ struct Cli {
 
     #[arg(short = 'A', long = "ascii", help = "Turn on ANSI line graphics hack when printing the indentation lines.")]
     ascii: bool,
+
+    #[arg(short = 't', long = "sort-by-time", help = "Sort output by last modification time instead of alphabetically.")]
+    sort_by_time: bool,
+
+    #[arg(short = 'r', long = "reverse", help = "Reverse the sort order.")]
+    reverse: bool,
+
+    #[arg(short = 'D', long = "mod-date", help = "Print the date of last modification.")]
+    print_mod_date: bool,
+
+    #[arg(short = 'o', long = "output", help = "Send output to filename.")]
+    output_file: Option<String>,
+
+    #[arg(long = "filelimit", value_name = "#", help = "Do not descend directories that contain more than # entries.")]
+    file_limit: Option<u64>,
+
+    #[arg(long = "dirsfirst", help = "List directories before files.")]
+    dirs_first: bool,
+
+    #[arg(short = 'F', long = "classify", help = "Append indicator (one of */=@|%>) to entries.")]
+    classify: bool,
+
+    #[arg(long = "noreport", help = "Omits printing of the file and directory report at the end of the tree listing.")]
+    no_report: bool,
+
+    #[arg(short = 'p', help = "Print the protections for each file (unix only).")]
+    print_permissions: bool,
 }
 
 fn main() {
@@ -83,6 +110,15 @@ fn main() {
         color: cli.color,
         no_color: cli.no_color,
         ascii: cli.ascii,
+        sort_by_time: cli.sort_by_time,
+        reverse: cli.reverse,
+        print_mod_date: cli.print_mod_date,
+        output_file: cli.output_file.clone(),
+        file_limit: cli.file_limit,
+        dirs_first: cli.dirs_first,
+        classify: cli.classify,
+        no_report: cli.no_report,
+        print_permissions: cli.print_permissions,
     };
 
     if let Err(e) = list_directory(&cli.path, &options) {
