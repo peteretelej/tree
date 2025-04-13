@@ -25,7 +25,7 @@ Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tre
 - [x] Turn Colorization off (`-n` or `--no-color`)
 - [x] Use ASCII characters for tree display (`-A` or `--ascii`)
 - [x] List directories only (`-d` or `--directories`)
-- [ ] Exclude specific files matching patterns with the `-I` flag
+- [x] Exclude specific files matching patterns (`-I` or `--exclude`)
 - [ ] Send output to filename with `-o` flag
 - [ ] Do not descend directories that contain more a more than # entries with `--filelimit` flag
 - [ ] List directories first before files with `dirsfirst` flag
@@ -70,10 +70,12 @@ For example:
 # Using short flags
 ./tree -L 2 .
 ./tree -a -f -s .
+./tree -P "*.txt" -I "*.log" .
 
 # Using long flags
 ./tree --level=2 .
 ./tree --all --full-path --size .
+./tree --pattern="*.txt" --exclude="*.log" .
 ```
 
 ### Using as Rust Crate

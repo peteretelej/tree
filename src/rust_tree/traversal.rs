@@ -26,8 +26,16 @@ fn should_skip_entry(
         return Ok(true);
     }
 
-    // Check pattern
+    // Check exclude pattern FIRST
+    if let Some(exclude_pattern) = &options.exclude_pattern {
+        if file_name.is_some_and(|name| exclude_pattern.matches(name)) {
+            return Ok(true); // Skip if matches exclude pattern
+        }
+    }
+
+    // Check include pattern (only if exclude didn't match)
     if let Some(pattern) = &options.pattern_glob {
+        // Directories are not filtered by pattern, only files
         if !path.is_dir() && !file_name.is_some_and(|name| pattern.matches(name)) {
             return Ok(true);
         }
