@@ -54,10 +54,9 @@ jobs:
         id: get_help
         run: |
           HELP_TEXT="$(./target/release/tree --help)"
-          # Escape newlines and quotes for JSON
-          HELP_TEXT="${HELP_TEXT//$'\n'/\\n}"
-          HELP_TEXT="${HELP_TEXT//\"/\\\"}"
-          echo "help_text=${HELP_TEXT}" >> $GITHUB_OUTPUT
+          echo "help_text<<EOF" >> $GITHUB_OUTPUT
+          echo "$HELP_TEXT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
   update-release-notes:
     needs: generate-cli-docs
@@ -115,6 +114,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          toolchain: stable
           RUSTTARGET: ${{ matrix.target }}
           ARCHIVE_TYPES: ${{ matrix.archive }}
           ARCHIVE_NAME: ${{ matrix.name }}
