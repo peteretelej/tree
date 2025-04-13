@@ -138,7 +138,7 @@ fn test_size_options() {
     let size = run_cmd(&["-s", &base]);
     assert!(size.contains("1024"));
 
-    let human = run_cmd(&["-h", &base]);
+    let human = run_cmd(&["-H", &base]);
     assert!(human.contains("1.0K") || human.contains("1.0 KB"));
 
     cleanup_dynamic_fixture(&base);

@@ -34,6 +34,9 @@ jobs:
           override: true
           components: rustfmt, clippy
 
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
       - name: Configure Git line endings
         run: |
           git config --global core.autocrlf input
@@ -77,19 +80,10 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: Cache dependencies
-        uses: actions/cache@v3
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ matrix.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ matrix.os }}-cargo-
+          prefix-key: ${{ matrix.os }}
 
       - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --verbose
+        run: cargo test --verbose

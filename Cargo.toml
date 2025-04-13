@@ -18,7 +18,7 @@ repository = "https://github.com/peteretelej/tree"
 
 [dependencies]
 walkdir = "2.3"
-clap = "3.0"
+clap = { version = "4.5.36", features = ["derive"] }
 ansi_term = "0.12"
 term = "0.7"
 glob = "0.3.1"
