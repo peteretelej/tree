@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 
@@ -6,119 +5,166 @@ use crate::rust_tree::display::colorize;
 use crate::rust_tree::options::TreeOptions;
 use crate::rust_tree::utils::bytes_to_human_readable;
 
+fn should_skip_entry(
+    entry: &fs::DirEntry,
+    options: &TreeOptions,
+    depth: usize,
+) -> std::io::Result<bool> {
+    let path = entry.path();
+    let file_name = path.file_name().and_then(|name| name.to_str());
+
+    // Check depth limit first (most common)
+    if let Some(max_level) = options.level {
+        if depth >= max_level as usize { // depth is 0-indexed, level is 1-indexed
+            return Ok(true); // Skip if depth is at or beyond the limit
+        }
+    }
+
+    // Check if hidden
+    let is_hidden = file_name.map(|name| name.starts_with('.')).unwrap_or(false);
+    if !options.all_files && is_hidden {
+        return Ok(true);
+    }
+
+    // Check pattern
+    if let Some(pattern) = &options.pattern_glob {
+        if !path.is_dir() && !file_name.is_some_and(|name| pattern.matches(name)) {
+            return Ok(true);
+        }
+    }
+
+    // Check dir_only
+    if options.dir_only && !path.is_dir() {
+        return Ok(true);
+    }
+
+    Ok(false)
+}
+
+// Helper function to format a single line of the tree output
+fn format_entry_line(
+    entry: &fs::DirEntry,
+    options: &TreeOptions,
+    indent_state: &[bool],
+    is_last: bool,
+) -> std::io::Result<String> {
+    let path = entry.path();
+    let mut line = String::new();
+
+    // --- Indentation ---
+    // Indent only if not disabled and depth > 0.
+    // Note: indent_state is empty when depth == 0.
+    if !options.no_indent && !indent_state.is_empty() {
+        for &is_parent_last in indent_state.iter() {
+            if is_parent_last {
+                line.push_str("    ");
+            } else {
+                let vertical_line = if options.ascii { "|   " } else { "│   " };
+                line.push_str(vertical_line);
+            }
+        }
+    }
+
+    // --- Line Prefix (├──, └──) ---
+    let line_prefix = match (options.no_indent, is_last, options.ascii) {
+        (true, _, _) => "",
+        (false, true, true) => "+---",
+        (false, true, false) => "└── ",
+        (false, false, true) => "\\---",
+        (false, false, false) => "├── ",
+    };
+    line.push_str(line_prefix);
+
+    // --- Name (potentially colored) ---
+    let name_part = if options.full_path {
+        path.display().to_string()
+    } else {
+        entry.file_name().to_string_lossy().to_string()
+    };
+    let colored_name = if options.no_color || !options.color {
+        name_part
+    } else {
+        colorize(entry, &name_part)
+    };
+    line.push_str(&colored_name);
+
+    // --- Size (optional) ---
+    let file_type = entry.file_type()?;
+    if !file_type.is_dir() && (options.print_size || options.human_readable) {
+        let metadata = entry.metadata()?;
+        let size = metadata.len();
+        let size_str = if options.human_readable {
+            format!(" [{}]", bytes_to_human_readable(size))
+        } else {
+            format!(" [{:5}B]", size)
+        };
+        line.push_str(&size_str);
+    }
+
+    Ok(line)
+}
+
 pub fn traverse_directory<P: AsRef<Path>>(
     root_path: P,
     current_path: &Path,
     options: &TreeOptions,
     depth: usize,
-    _is_last: bool,
     stats: &mut (u64, u64),
-    last_entry_depths: &mut HashSet<usize>,
+    indent_state: &[bool],
 ) -> std::io::Result<()> {
-    let mut entries: Vec<_> = fs::read_dir(current_path)?.collect();
-    entries.sort_by_key(|entry| entry.as_ref().unwrap().file_name().to_owned());
+    // Attempt to read directory entries, filter out errors, then collect.
+    let read_dir_result = fs::read_dir(current_path);
+    let mut entries: Vec<_> = match read_dir_result {
+        Ok(reader) => reader.filter_map(Result::ok).collect(), // Ignore entries that cause an error during iteration
+        Err(e) => {
+            // If reading the directory itself fails (e.g., permission denied), print error and skip.
+            eprintln!("Error reading directory {:?}: {}", current_path, e);
+            return Ok(()); // Continue traversal for other directories if possible
+        }
+    };
+    
+    entries.sort_by_key(|entry| entry.file_name().to_owned());
 
     let last_index = entries.len().saturating_sub(1);
 
-    for (index, entry) in entries.into_iter().enumerate() {
-        let entry = entry?;
+    for (index, entry_result) in entries.into_iter().enumerate() {
+        let entry = entry_result;
         let path = entry.path();
         let is_entry_last = index == last_index;
 
-        // Check if hidden files and directories are allowed
-        let is_hidden = path
-            .file_name()
-            .map(|name| name.to_string_lossy().starts_with('.'))
-            .unwrap_or(false);
-        if !options.all_files && is_hidden {
-            continue;
-        }
-        if options.level.is_some() && depth >= options.level.unwrap() as usize {
-            continue;
-        }
-        if options.pattern_glob.is_some() && !path.is_dir() {
-            let pattern_glob = options.pattern_glob.as_ref().unwrap();
-            let file_name = path.file_name().unwrap().to_string_lossy();
-            if !pattern_glob.matches(&file_name) {
-                continue;
-            }
-        }
-        if options.dir_only && !path.is_dir() {
+        // Check if entry should be skipped
+        if should_skip_entry(&entry, options, depth)? {
             continue;
         }
 
-        // Print indentation
-        let root_path_buf = root_path.as_ref().to_path_buf();
-        let current_path_buf = current_path.to_path_buf();
-        if !options.no_indent && current_path_buf != root_path_buf {
-            for i in 0..depth {
-                if last_entry_depths.contains(&i) {
-                    print!("    ");
-                } else {
-                    let vertical_line = if options.ascii { "|   " } else { "│   " };
-                    print!("{}", vertical_line);
-                }
-            }
-        }
+        // Format the line for the current entry
+        let line = format_entry_line(&entry, options, indent_state, is_entry_last)?;
+        println!("{}", line);
 
-        // Print file/directory name with prefix
-        let prefix = match (options.no_indent, is_entry_last, options.ascii) {
-            (true, _, _) => "",
-            (false, true, true) => "+---",
-            (false, true, false) => "└── ",
-            (false, false, true) => "\\---",
-            (false, false, false) => "├── ",
-        };
-
-        let name = if options.full_path {
-            path.display().to_string()
-        } else {
-            entry.file_name().to_string_lossy().to_string()
-        };
-        let colored_name = if options.no_color || !options.color {
-            name
-        } else {
-            colorize(&entry, name)
-        };
-        print!("{}{}", prefix, colored_name);
-
+        // Recurse into directories if necessary
         if entry.file_type()?.is_dir() {
-            // If it's a directory, recurse into it
-            if !is_hidden {
-                stats.0 += 1;
-            }
-            println!();
-            if is_entry_last {
-                last_entry_depths.insert(depth);
-            }
-            traverse_directory(
-                root_path.as_ref(),
-                &path,
-                options,
-                depth + 1,
-                is_entry_last,
-                stats,
-                last_entry_depths,
-            )?;
-            if is_entry_last {
-                last_entry_depths.remove(&depth);
+            stats.0 += 1;
+            // Recurse ONLY if the NEXT level is within the limit
+            let should_recurse = options.level.is_none()
+                || (depth + 1) < options.level.unwrap() as usize;
+
+            if should_recurse {
+                // Prepare the indent state for the recursive call
+                let mut next_indent_state = indent_state.to_vec();
+                next_indent_state.push(is_entry_last);
+                
+                traverse_directory(
+                    root_path.as_ref(),
+                    &path,
+                    options,
+                    depth + 1,
+                    stats,
+                    &next_indent_state,
+                )?;
             }
         } else {
-            // If it's a file and the size option is set, print its size
-            if !is_hidden {
-                stats.1 += 1;
-            }
-            if options.print_size || options.human_readable {
-                let metadata = entry.metadata()?;
-                let size = metadata.len();
-                let size_str = if options.human_readable {
-                    format!(" ({})", bytes_to_human_readable(size))
-                } else {
-                    format!(" ({:5}B)", size)
-                };
-                print!("{}", size_str);
-            }
-            println!();
+            stats.1 += 1;
+            // No newline print needed here anymore, handled by format_entry_line + println
         }
     }
 
@@ -127,26 +173,27 @@ pub fn traverse_directory<P: AsRef<Path>>(
 
 pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io::Result<()> {
     let current_path = path.as_ref();
-    println!(
-        "{}",
+    let display_path = if options.full_path {
+        current_path.canonicalize()?.display().to_string()
+    } else {
         current_path
             .file_name()
             .and_then(|name| name.to_str())
             .unwrap_or(".")
-    );
+            .to_string()
+    };
+    println!("{}", display_path);
 
     let mut stats = (0, 0); // (directories, files)
-                            // Recursively traverse the directory and print its contents
-    let mut last_entry_depths = HashSet::new();
 
+    // Start the recursive traversal with empty initial indent state
     traverse_directory(
-        current_path,
+        current_path, // Use original path for root comparison
         current_path,
         options,
-        0,
-        false,
+        0, // Initial depth for root's contents
         &mut stats,
-        &mut last_entry_depths,
+        &[], // Initial empty indent state
     )?;
 
     println!("\n{} directories, {} files", stats.0, stats.1);

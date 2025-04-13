@@ -5,6 +5,11 @@ use std::option::Option;
 use rust_tree::rust_tree::options::TreeOptions;
 use rust_tree::rust_tree::traversal::list_directory;
 
+// Custom function to validate the glob pattern
+fn parse_glob_pattern(s: &str) -> Result<Pattern, String> {
+    Pattern::new(s).map_err(|e| e.to_string())
+}
+
 #[derive(Parser)]
 #[command(name = "tree")]
 #[command(about = "Display directory tree structure")]
@@ -18,8 +23,8 @@ struct Cli {
     #[arg(short = 'L', long = "level", help = "Max display depth of the directory tree.")]
     level: Option<i32>,
 
-    #[arg(short = 'P', long = "pattern", help = "List only those files that match the wild-card pattern. Note: you must use the -a option to also consider those files beginning with a dot '.' for matching.")]
-    pattern: Option<String>,
+    #[arg(short = 'P', long = "pattern", help = "List only those files that match the wild-card pattern. Note: you must use the -a option to also consider those files beginning with a dot '.' for matching.", value_parser = parse_glob_pattern)]
+    pattern_glob: Option<Pattern>,
 
     #[arg(short = 'f', long = "full-path", help = "Prints the full path prefix for each file.")]
     full_path: bool,
@@ -49,13 +54,6 @@ struct Cli {
 fn main() {
     let cli = Cli::parse();
     
-    let pattern_glob: Option<Pattern> = cli.pattern.map(|pattern| {
-        Pattern::new(&pattern).unwrap_or_else(|_| {
-            eprintln!("Error: Invalid glob pattern.");
-            std::process::exit(1);
-        })
-    });
-
     let options = TreeOptions {
         all_files: cli.all_files,
         level: cli.level,
@@ -64,7 +62,7 @@ fn main() {
         no_indent: cli.no_indent,
         print_size: cli.print_size,
         human_readable: cli.human_readable,
-        pattern_glob,
+        pattern_glob: cli.pattern_glob,
         color: cli.color,
         no_color: cli.no_color,
         ascii: cli.ascii,
