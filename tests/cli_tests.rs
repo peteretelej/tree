@@ -56,6 +56,9 @@ struct Cli {
 
     #[arg(long = "filelimit")]
     file_limit: Option<u64>,
+
+    #[arg(long = "dirsfirst")]
+    dirs_first: bool,
 }
 
 #[test]
@@ -228,6 +231,74 @@ fn test_file_limit() -> Result<(), Box<dyn std::error::Error>> {
     // Check summary components separately
     assert!(content2.contains("1 directory"), "Test 2 Summary Failed (dir count): Content was\n{}", content2);
     assert!(content2.contains("1 file"), "Test 2 Summary Failed (file count): Content was\n{}", content2);
+
+    Ok(())
+}
+
+#[test]
+fn test_dirsfirst() -> Result<(), Box<dyn std::error::Error>> {
+    let dir = tempdir()?;
+    let root = dir.path();
+    let sub_dir_b = root.join("sub_dir_b");
+    let sub_dir_a = root.join("sub_dir_a");
+    fs::create_dir(&sub_dir_b)?;
+    fs::create_dir(&sub_dir_a)?;
+    fs::write(root.join("file_c.txt"), "c")?;
+    fs::write(root.join("file_a.txt"), "a")?;
+
+    // --- Test 1: Default (no --dirsfirst) --- 
+    let mut cmd1 = Command::cargo_bin("tree")?;
+    cmd1.arg(root.to_str().unwrap());
+    let output1 = cmd1.output()?;
+    cmd1.assert().success();
+    let content1 = String::from_utf8(output1.stdout)?;
+    println!("Content without --dirsfirst:\n{}", content1);
+
+    // Default is alphabetical: file_a, file_c, sub_dir_a, sub_dir_b
+    let pos_file_a = content1.find("file_a.txt").unwrap_or(usize::MAX);
+    let pos_file_c = content1.find("file_c.txt").unwrap_or(usize::MAX);
+    let pos_sub_dir_a = content1.find("sub_dir_a").unwrap_or(usize::MAX);
+    let pos_sub_dir_b = content1.find("sub_dir_b").unwrap_or(usize::MAX);
+
+    assert!(pos_file_a < pos_file_c);
+    assert!(pos_file_c < pos_sub_dir_a);
+    assert!(pos_sub_dir_a < pos_sub_dir_b);
+
+    // --- Test 2: With --dirsfirst --- 
+    let mut cmd2 = Command::cargo_bin("tree")?;
+    cmd2.arg(root.to_str().unwrap()).arg("--dirsfirst");
+    let output2 = cmd2.output()?;
+    cmd2.assert().success();
+    let content2 = String::from_utf8(output2.stdout)?;
+    println!("Content with --dirsfirst:\n{}", content2);
+
+    // Dirs first (alphabetical within type): sub_dir_a, sub_dir_b, file_a, file_c
+    let pos_sub_dir_a_2 = content2.find("sub_dir_a").unwrap_or(usize::MAX);
+    let pos_sub_dir_b_2 = content2.find("sub_dir_b").unwrap_or(usize::MAX);
+    let pos_file_a_2 = content2.find("file_a.txt").unwrap_or(usize::MAX);
+    let pos_file_c_2 = content2.find("file_c.txt").unwrap_or(usize::MAX);
+
+    assert!(pos_sub_dir_a_2 < pos_sub_dir_b_2);
+    assert!(pos_sub_dir_b_2 < pos_file_a_2);
+    assert!(pos_file_a_2 < pos_file_c_2);
+    
+    // --- Test 3: With --dirsfirst and --reverse --- 
+    let mut cmd3 = Command::cargo_bin("tree")?;
+    cmd3.arg(root.to_str().unwrap()).arg("--dirsfirst").arg("-r");
+    let output3 = cmd3.output()?;
+    cmd3.assert().success();
+    let content3 = String::from_utf8(output3.stdout)?;
+    println!("Content with --dirsfirst -r:\n{}", content3);
+    
+    // Dirs first (reverse alphabetical within type): sub_dir_b, sub_dir_a, file_c, file_a
+    let pos_sub_dir_b_3 = content3.find("sub_dir_b").unwrap_or(usize::MAX);
+    let pos_sub_dir_a_3 = content3.find("sub_dir_a").unwrap_or(usize::MAX);
+    let pos_file_c_3 = content3.find("file_c.txt").unwrap_or(usize::MAX);
+    let pos_file_a_3 = content3.find("file_a.txt").unwrap_or(usize::MAX);
+
+    assert!(pos_sub_dir_b_3 < pos_sub_dir_a_3);
+    assert!(pos_sub_dir_a_3 < pos_file_c_3);
+    assert!(pos_file_c_3 < pos_file_a_3);
 
     Ok(())
 }

@@ -180,19 +180,56 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
     };
 
     // --- 2. Sort Entries --- 
-    if options.sort_by_time { // Sort logic remains the same
-        entries_info.sort_by(|a, b| {
-            let time_a = a.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
-            let time_b = b.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
-            time_a
-                .cmp(time_b)
-                .then_with(|| a.entry.file_name().cmp(&b.entry.file_name()))
-        });
+    if options.dirs_first {
+        // Partition into directories and files, handling potential file_type errors
+        let (mut dirs, mut files): (Vec<EntryInfo>, Vec<EntryInfo>) = std::mem::take(&mut entries_info)
+            .into_iter()
+            .partition(|info| {
+                // Treat entries where file_type fails as non-directories
+                info.entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false)
+            });
+
+        // Define the comparison logic based on sort_by_time
+        let sort_comparison = |a: &EntryInfo, b: &EntryInfo| {
+            if options.sort_by_time {
+                let time_a = a.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
+                let time_b = b.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
+                time_a.cmp(time_b).then_with(|| a.entry.file_name().cmp(&b.entry.file_name()))
+            } else {
+                a.entry.file_name().cmp(&b.entry.file_name())
+            }
+        };
+
+        // Sort directories and files independently
+        dirs.sort_by(sort_comparison);
+        files.sort_by(sort_comparison);
+
+        // Apply reverse if needed
+        if options.reverse {
+            dirs.reverse();
+            files.reverse();
+        }
+
+        // Combine back, dirs first
+        entries_info = dirs;
+        entries_info.append(&mut files);
+
     } else {
-        entries_info.sort_by_key(|info| info.entry.file_name().to_owned());
-    }
-    if options.reverse {
-        entries_info.reverse();
+        // Original sorting logic if dirs_first is not enabled
+        if options.sort_by_time { 
+            entries_info.sort_by(|a, b| {
+                let time_a = a.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
+                let time_b = b.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
+                time_a
+                    .cmp(time_b)
+                    .then_with(|| a.entry.file_name().cmp(&b.entry.file_name()))
+            });
+        } else {
+            entries_info.sort_by_key(|info| info.entry.file_name().to_owned());
+        }
+        if options.reverse {
+            entries_info.reverse();
+        }
     }
 
     // --- 4. Iterate, Print, Count Stats, and Recurse (conditionally) --- 

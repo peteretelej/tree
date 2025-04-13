@@ -18,4 +18,5 @@ pub struct TreeOptions {
     pub print_mod_date: bool,
     pub output_file: Option<String>,
     pub file_limit: Option<u64>,
+    pub dirs_first: bool,
 }

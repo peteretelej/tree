@@ -66,6 +66,9 @@ struct Cli {
 
     #[arg(long = "filelimit", value_name = "#", help = "Do not descend directories that contain more than # entries.")]
     file_limit: Option<u64>,
+
+    #[arg(long = "dirsfirst", help = "List directories before files.")]
+    dirs_first: bool,
 }
 
 fn main() {
@@ -103,6 +106,7 @@ fn main() {
         print_mod_date: cli.print_mod_date,
         output_file: cli.output_file.clone(),
         file_limit: cli.file_limit,
+        dirs_first: cli.dirs_first,
     };
 
     if let Err(e) = list_directory(&cli.path, &options) {

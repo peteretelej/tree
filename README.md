@@ -28,7 +28,7 @@ Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tre
 - [x] Exclude specific files matching patterns (`-I` or `--exclude`)
 - [x] Send output to filename with `-o` flag
 - [x] Do not descend directories that contain more than # entries with `--filelimit` flag
-- [ ] List directories first before files with `dirsfirst` flag
+- [x] List directories first before files with `dirsfirst` flag
 - [x] Sort output by last modification time (`-t`)
 - [x] Reverse sort order (`-r`)
 - [x] Print last modification date (`-D`)
