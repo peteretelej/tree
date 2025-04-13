@@ -155,38 +155,61 @@ Contributions are welcome! If you have any suggestions, feature requests, or bug
 
 ### Releasing a new version
 
-To release a new version:
+Follow these steps to release a new version (e.g., `0.1.5`):
 
-1. Update the version in `Cargo.toml`
-2. Update `Cargo.lock`
+1.  **Create a release branch:**
 
-```bash
-# 2. Update Cargo.lock
-cargo update --package rust_tree
-```
+    ```bash
+    git checkout -b release/v0.1.5  # Replace 0.1.5 with the new version
+    ```
 
-3. Commit and tag
+2.  **Update Version:**
 
-```bash
-git add Cargo.toml Cargo.lock
-git commit -m "chore: bump version to 0.1.5"  # Replace 0.1.5 with new version
-git tag -a "v0.1.5" -m "Version 0.1.5"       # Replace 0.1.5 with new version
-```
+    - Edit `Cargo.toml` and set the `version` field to the new version.
+    - Run `cargo update --package rust_tree` to update `Cargo.lock`.
 
-4. Push changes
+3.  **Commit Changes:**
 
-```bash
-git push origin main
-git push origin v0.1.5                        # Replace 0.1.5 with new version
-```
+    ```bash
+    git add Cargo.toml Cargo.lock
+    git commit -m "chore: bump version to 0.1.5" # Use the correct version
+    ```
 
-5. Create a new release on GitHub
-   Visit: https://github.com/peteretelej/tree/releases/new
+4.  **Push Branch:**
 
-- Choose the tag you just pushed
-- The release workflow will automatically:
-  - Generate CLI documentation
-  - Build binaries for Windows, Linux, and MacOS
+    ```bash
+    git push origin release/v0.1.5 # Use your branch name
+    ```
+
+5.  **Merge:**
+
+    - Create a Pull Request on GitHub from your release branch to `main`.
+    - Review and merge the PR.
+    - Switch back to `main` and pull the latest changes:
+      ```bash
+      git checkout main
+      git pull origin main
+      ```
+
+6.  **Tag the Release on `main`:**
+
+    - Ensure you are on the `main` branch with the merged changes.
+    - Create an annotated tag:
+      ```bash
+      git tag -a "v0.1.5" -m "Version 0.1.5" # Use the correct version
+      ```
+
+7.  **Push the Tag:**
+
+    ```bash
+    git push origin v0.1.5 # Use the correct version tag
+    ```
+
+8.  **Create GitHub Release:**
+    - Go to: [https://github.com/peteretelej/tree/releases/new](https://github.com/peteretelej/tree/releases/new)
+    - Choose the tag you just pushed (e.g., `v0.1.5`).
+    - Fill in the release details.
+    - The release workflow should automatically build and attach binaries.
 
 ## License
 
