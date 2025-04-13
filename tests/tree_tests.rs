@@ -1,5 +1,6 @@
 use std::fs::{self, create_dir_all};
 use std::process::Command;
+use std::path::PathBuf;
 
 fn run_cmd(arg: &[&str]) -> String {
     let binary_path = if cfg!(windows) {
@@ -8,12 +9,48 @@ fn run_cmd(arg: &[&str]) -> String {
         "target/debug/tree"
     };
 
-    let stdout = Command::new(binary_path)
+    let output_result = Command::new(binary_path)
         .args(arg)
         .output()
-        .expect("command failed")
-        .stdout;
-    String::from_utf8(stdout).expect("Bad parsing")
+        .expect("command failed");
+
+    // Print stderr for debugging purposes, especially if the command failed
+    if !output_result.stderr.is_empty() {
+        eprintln!("--- Captured STDERR for {:?} ---", arg);
+        eprintln!("{}", String::from_utf8_lossy(&output_result.stderr));
+        eprintln!("--------------------------------------");
+    }
+
+    // Panic if the command execution itself failed
+    if !output_result.status.success() {
+        panic!(
+            "Command {:?} failed with status: {}\nStderr:\n{}",
+            arg,
+            output_result.status,
+            String::from_utf8_lossy(&output_result.stderr)
+        );
+    }
+
+    String::from_utf8(output_result.stdout).expect("Bad parsing")
+}
+
+// Helper to create a test directory with a defined structure
+fn create_fixture(base_name: &str, files: &[(&str, Option<&str>)]) -> String {
+    let base = format!("tests/dynamic/{}_{}", base_name, std::process::id());
+    create_dir_all(&base).unwrap();
+    for (path, content) in files {
+        let full_path = PathBuf::from(&base).join(path);
+        if let Some(parent) = full_path.parent() {
+            create_dir_all(parent).unwrap();
+        }
+        if let Some(text) = content {
+            fs::write(full_path, text).unwrap();
+        } else {
+            // Assume directory if content is None
+            create_dir_all(full_path).unwrap();
+        }
+    }
+    base
 }
 
 // Helper to create a test directory with empty subdirectories
@@ -36,8 +73,16 @@ fn cleanup_dynamic_fixture(path: &str) {
 fn assert_contains_path(haystack: &str, needle: &str) {
     let unix_style = needle.replace('\\', "/");
     let windows_style = needle.replace('/', "\\");
+    let contains = haystack.contains(&unix_style) || haystack.contains(&windows_style);
+    if !contains {
+        eprintln!("--- ASSERTION FAILED ---");
+        eprintln!("Needle (Unix):    {}", unix_style);
+        eprintln!("Needle (Windows): {}", windows_style);
+        eprintln!("Haystack:\n{}", haystack);
+        eprintln!("-----------------------");
+    }
     assert!(
-        haystack.contains(&unix_style) || haystack.contains(&windows_style),
+        contains,
         "Output should contain path '{}' (or Windows equivalent '{}')",
         unix_style,
         windows_style
@@ -130,16 +175,116 @@ fn test_pattern_and_dir_only() {
 }
 
 #[test]
+fn test_exact_output_simple() {
+    let base = create_fixture("exact_simple", &[
+        ("dir_a/file_a1.txt", Some("a1")),
+        ("dir_b/", None), // Empty dir
+        ("file_root.txt", Some("root")),
+    ]);
+
+    let output = run_cmd(&[&base]);
+    let base_name = PathBuf::from(&base).file_name().unwrap().to_string_lossy().to_string();
+
+    // Construct expected output carefully, sensitive to platform line endings potentially
+    let expected_lines = [
+        base_name.as_str(),
+        "├── dir_a",
+        "│   └── file_a1.txt",
+        "├── dir_b",
+        "└── file_root.txt",
+        "", // Empty line before summary
+        "2 directories, 2 files"
+    ];
+    let expected_output = expected_lines.join("\n");
+
+    // Normalize line endings in actual output for comparison
+    let normalized_output = output.trim_end().replace("\r\n", "\n");
+
+    assert_eq!(normalized_output, expected_output, "Output mismatch for exact structure test");
+
+    cleanup_dynamic_fixture(&base);
+}
+
+#[test]
+fn test_hidden_directory() {
+    let base = create_fixture("hidden_dir", &[
+        (".hiddendir/file_in_hidden.txt", Some("hidden")),
+        ("visible_file.txt", Some("visible")),
+    ]);
+
+    let default_output = run_cmd(&[&base]);
+    assert!(!default_output.contains(".hiddendir"));
+    assert!(!default_output.contains("file_in_hidden.txt"));
+    assert!(default_output.contains("visible_file.txt"));
+
+    let hidden_output = run_cmd(&["-a", &base]);
+    assert!(hidden_output.contains(".hiddendir"));
+    assert!(hidden_output.contains("file_in_hidden.txt"));
+    assert!(hidden_output.contains("visible_file.txt"));
+
+    cleanup_dynamic_fixture(&base);
+}
+
+#[test]
+fn test_combined_options() {
+    let base = create_fixture("combined", &[
+        ("dir1/subdir1/file1.txt", Some("abc")),
+        ("dir1/.hidden_file", Some("hidden")),
+        ("dir2/file2.log", Some("log data")),
+    ]);
+
+    // Restore original flags
+    let output = run_cmd(&["-L", "2", "-s", "-f", "-a", &base]);
+
+    // Create the base path string for assertions
+    let base_path_buf = PathBuf::from(&base);
+    let base_path_str = base_path_buf.to_string_lossy();
+
+    // Check level limit (-L 2 means depths 0 and 1 are processed)
+    // Since -f is used, check for full paths. Need to account for prefixes.
+    // Check that lines ENDING with the expected paths exist.
+    let lines: Vec<&str> = output.lines().collect();
+
+    let dir1_path = format!("{}{}dir1", base_path_str, std::path::MAIN_SEPARATOR);
+    assert!(lines.iter().any(|line| line.ends_with(&dir1_path)), "Output should contain line ending with: {}", dir1_path);
+
+    let hidden_file_path = format!("{}{}dir1{}.hidden_file", base_path_str, std::path::MAIN_SEPARATOR, std::path::MAIN_SEPARATOR);
+    assert!(lines.iter().any(|line| line.contains(&hidden_file_path) && line.contains("6B]")), "Output should contain line with: {} and size", hidden_file_path);
+
+    let subdir1_path = format!("{}{}dir1{}subdir1", base_path_str, std::path::MAIN_SEPARATOR, std::path::MAIN_SEPARATOR);
+    assert!(lines.iter().any(|line| line.ends_with(&subdir1_path)), "Output should contain line ending with: {}", subdir1_path);
+
+    let file2_log_path = format!("{}{}dir2{}file2.log", base_path_str, std::path::MAIN_SEPARATOR, std::path::MAIN_SEPARATOR);
+    assert!(lines.iter().any(|line| line.contains(&file2_log_path) && line.contains("8B]")), "Output should contain line with: {} and size", file2_log_path);
+
+    // Check that deeper paths are NOT present
+    assert!(!output.contains("file1.txt"), "file1.txt (depth 2) should not be present with -L 2");
+
+    cleanup_dynamic_fixture(&base);
+}
+
+#[test]
 fn test_size_options() {
     let base = format!("tests/dynamic/size_{}", std::process::id());
     create_dir_all(&base).unwrap();
     fs::write(format!("{}/sized_file.txt", base), "x".repeat(1024)).unwrap();
+    fs::write(format!("{}/bytes_file.txt", base), "xyz").unwrap();
+    fs::write(format!("{}/megabyte_file.bin", base), vec![0u8; 1024 * 1024]).unwrap(); // 1 MB file
+    fs::write(format!("{}/zero_byte.txt", base), "").unwrap(); // 0 byte file
 
     let size = run_cmd(&["-s", &base]);
-    assert!(size.contains("1024"));
+    // Assertions updated for bracketed format: " [ padding B]"
+    assert!(size.contains("[    3B]")); // bytes_file.txt
+    assert!(size.contains("[ 1024B]")); // sized_file.txt
+    assert!(size.contains("[1048576B]")); // megabyte_file.bin (exact bytes)
+    assert!(size.contains("[    0B]")); // zero_byte.txt
 
     let human = run_cmd(&["-H", &base]);
-    assert!(human.contains("1.0K") || human.contains("1.0 KB"));
+    // Assertions updated for bracketed format: " [size UNIT]"
+    assert!(human.contains("[3.0 B]") || human.contains("[3 B]"));
+    assert!(human.contains("[1.0 KB]") || human.contains("[1.0K]"));
+    assert!(human.contains("[1.0 MB]") || human.contains("[1.0M]"));
+    assert!(human.contains("[0.0 B]") || human.contains("[0 B]"));
 
     cleanup_dynamic_fixture(&base);
 }
