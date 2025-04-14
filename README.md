@@ -148,29 +148,19 @@ For VS Code users, add this to your settings.json:
 #### Releasing a new version
 
 <details>
-<summary>Tree Release Process</summary>
+<summary>tree cli Release Process</summary>
 
-1. Update version in `Cargo.toml` and create a new version tag:
-
-   ```bash
-   # Update version in Cargo.toml to X.Y.Z
-   git add Cargo.toml
-   git commit -m "chore: bump version to X.Y.Z"
-   git tag -a vX.Y.Z -m "Version X.Y.Z"
-   git push origin vX.Y.Z
-   ```
-
-2. The GitHub Actions workflow will:
-   - Create a draft release
-   - Build binaries for: Linux, MacOS, Windows
-   - Generate checksums
-   - Upload the artifacts to the draft release
-
-You can test the release process locally (single target build):
+Update version in `Cargo.toml` and push a tag:
 
 ```bash
-goreleaser build --single-target --snapshot --clean
+# Update version in Cargo.toml to 1.2.3
+git add Cargo.toml
+git commit -m "version 1.2.3"
+git tag -a v1.2.3 -m "tree v1.2.3"
+git push origin v1.2.3
 ```
+
+GitHub Actions will build and publish the release. Visit the [Releases page](https://github.com/peteretelej/tree/releases) to generate automated release notes for the release.
 
 </details>
 

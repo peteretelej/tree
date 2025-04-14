@@ -27,14 +27,19 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+            name: Linux-amd64
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
+            name: Linux-arm64
           - target: x86_64-apple-darwin
             os: macos-latest
+            name: macOS-amd64
           - target: aarch64-apple-darwin
             os: macos-latest
+            name: macOS-arm64
           - target: x86_64-pc-windows-gnu
             os: windows-latest
+            name: Windows-64bit
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -48,7 +53,34 @@ jobs:
         uses: taiki-e/upload-rust-binary-action@v1
         with:
           bin: tree
-          # Customize archive name to include the tag and target
-          archive: ${{ github.event.repository.name }}-${{ github.ref_name }}-${{ matrix.target }}
+          # Customize archive name to use user-friendly platform names
+          archive: tree-${{ github.ref_name }}-${{ matrix.name }}
           target: ${{ matrix.target }}
           token: ${{ secrets.GITHUB_TOKEN }}
+
+  windows-32bit:
+    needs: create-release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: i686-pc-windows-msvc
+
+      - name: Build 32-bit Windows binary
+        run: cargo build --release --target i686-pc-windows-msvc
+
+      - name: Create zip archive
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "target/i686-pc-windows-msvc/release/tree.exe" -DestinationPath "tree-${{ github.ref_name }}-Windows-32bit.zip"
+
+      - name: Upload to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: tree-${{ github.ref_name }}-Windows-32bit.zip
+          asset_name: tree-${{ github.ref_name }}-Windows-32bit.zip
+          tag: ${{ github.ref }}
