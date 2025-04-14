@@ -164,6 +164,12 @@ GitHub Actions will build and publish the release. Visit the [Releases page](htt
 
 </details>
 
+## Docs
+
+- [Privacy Policy](./docs/privacy.md)
+- [Terms of Use](./docs/terms.md)
+- [Support](./docs/support.md)
+
 ## License
 
 MIT

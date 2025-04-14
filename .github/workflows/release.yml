@@ -37,9 +37,6 @@ jobs:
           - target: aarch64-apple-darwin
             os: macos-latest
             name: macOS-arm64
-          - target: x86_64-pc-windows-gnu
-            os: windows-latest
-            name: Windows-64bit
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -58,29 +55,99 @@ jobs:
           target: ${{ matrix.target }}
           token: ${{ secrets.GITHUB_TOKEN }}
 
-  windows-32bit:
-    needs: create-release
+  setup-windows-tools:
     runs-on: windows-latest
+    steps:
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-wix
+        run: cargo install cargo-wix
+
+      - name: Cache cargo-wix
+        id: cache-cargo-wix
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/cargo-wix.exe
+          key: ${{ runner.os }}-cargo-wix-v1
+
+  windows-builds:
+    needs: [create-release, setup-windows-tools]
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            name: Windows-64bit
+          - target: i686-pc-windows-msvc
+            name: Windows-32bit
+          - target: aarch64-pc-windows-msvc
+            name: Windows-arm64
     steps:
       - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: i686-pc-windows-msvc
+          targets: ${{ matrix.target }}
 
-      - name: Build 32-bit Windows binary
-        run: cargo build --release --target i686-pc-windows-msvc
+      - name: Restore cargo-wix from cache
+        uses: actions/cache/restore@v3
+        with:
+          path: ~/.cargo/bin/cargo-wix.exe
+          key: ${{ runner.os }}-cargo-wix-v1
+          fail-on-cache-miss: true
+
+      - name: Install WiX Toolset
+        shell: pwsh
+        run: |
+          curl -L -o wix311-binaries.zip https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip
+          Expand-Archive wix311-binaries.zip -DestinationPath wix
+          $env:PATH += ";$(Get-Location)\wix"
+          echo "$(Get-Location)\wix" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Build Windows binary
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Create zip archive
         shell: pwsh
         run: |
-          Compress-Archive -Path "target/i686-pc-windows-msvc/release/tree.exe" -DestinationPath "tree-${{ github.ref_name }}-Windows-32bit.zip"
+          Compress-Archive -Path "target/${{ matrix.target }}/release/tree.exe" -DestinationPath "tree-${{ github.ref_name }}-${{ matrix.name }}.zip" -Force
 
-      - name: Upload to release
+      - name: Upload zip to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: tree-${{ github.ref_name }}-Windows-32bit.zip
-          asset_name: tree-${{ github.ref_name }}-Windows-32bit.zip
+          file: tree-${{ github.ref_name }}-${{ matrix.name }}.zip
+          asset_name: tree-${{ github.ref_name }}-${{ matrix.name }}.zip
           tag: ${{ github.ref }}
+          overwrite: true
+
+      - name: Copy executable with version in filename
+        shell: pwsh
+        run: |
+          Copy-Item "target/${{ matrix.target }}/release/tree.exe" -Destination "tree-${{ github.ref_name }}_${{ matrix.name }}.exe" -Force
+
+      - name: Upload executable to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: tree-${{ github.ref_name }}_${{ matrix.name }}.exe
+          asset_name: tree-${{ github.ref_name }}_${{ matrix.name }}.exe
+          tag: ${{ github.ref }}
+          overwrite: true
+
+      - name: Create MSI package
+        shell: pwsh
+        run: |
+          # Build MSI with debug output
+          cargo wix --target ${{ matrix.target }} --output "tree-${{ github.ref_name }}-${{ matrix.name }}.msi" --nocapture
+
+      - name: Upload MSI to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: tree-${{ github.ref_name }}-${{ matrix.name }}.msi
+          asset_name: tree-${{ github.ref_name }}-${{ matrix.name }}.msi
+          tag: ${{ github.ref }}
+          overwrite: true
