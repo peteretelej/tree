@@ -4,3 +4,5 @@ dist/
 .intentionally-empty-file.o
 target/
 dist/
+
+*.exe
