@@ -62,6 +62,19 @@ cargo build --release
 
 The resulting binary will be located at ./target/release/tree.
 
+#### Windows 7 Support
+
+For Windows 7 compatibility, use Rust 1.75 with the provided lockfile:
+
+```sh
+rustup install 1.75.0
+cp Cargo-win7.lock Cargo.lock
+rustup run 1.75.0 cargo build --release
+
+# restore default rust toolchain version
+rustup default stable
+```
+
 ## Usage
 
 ## Usage

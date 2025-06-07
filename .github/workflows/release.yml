@@ -86,8 +86,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Windows 7 compatible lockfile
+        shell: pwsh
+        run: |
+          Copy-Item "Cargo-win7.lock" -Destination "Cargo.lock" -Force
+
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@1.75.0
         with:
           targets: ${{ matrix.target }}
 
@@ -108,6 +113,8 @@ jobs:
 
       - name: Build Windows binary
         run: cargo build --release --target ${{ matrix.target }}
+        env:
+          RUSTFLAGS: "-C target-feature=+crt-static"
 
       - name: Create zip archive
         shell: pwsh
