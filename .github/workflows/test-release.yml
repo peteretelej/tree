@@ -1,0 +1,148 @@
+name: Test Release Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_tag:
+        description: 'Version tag for test release (e.g., test-v1.0.0)'
+        required: true
+        default: 'test-v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  upload-assets:
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: Linux-amd64
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            name: Linux-arm64
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            name: macOS-amd64
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            name: macOS-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Create archive
+        run: |
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+            tar -czf tree-${{ inputs.version_tag }}-${{ matrix.name }}.tar.gz -C target/${{ matrix.target }}/release tree
+          else
+            tar -czf tree-${{ inputs.version_tag }}-${{ matrix.name }}.tar.gz -C target/${{ matrix.target }}/release tree
+          fi
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tree-${{ inputs.version_tag }}-${{ matrix.name }}
+          path: tree-${{ inputs.version_tag }}-${{ matrix.name }}.tar.gz
+
+  setup-windows-tools:
+    runs-on: windows-latest
+    steps:
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-wix
+        run: cargo install cargo-wix
+
+      - name: Cache cargo-wix
+        id: cache-cargo-wix
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/cargo-wix.exe
+          key: ${{ runner.os }}-cargo-wix-v1
+
+  windows-builds:
+    needs: setup-windows-tools
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            name: Windows-64bit
+          - target: i686-pc-windows-msvc
+            name: Windows-32bit
+          - target: aarch64-pc-windows-msvc
+            name: Windows-arm64
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Windows 7 compatible lockfile
+        shell: pwsh
+        run: |
+          Copy-Item "Cargo-win7.lock" -Destination "Cargo.lock" -Force
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@1.75.0
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Restore cargo-wix from cache
+        uses: actions/cache/restore@v3
+        with:
+          path: ~/.cargo/bin/cargo-wix.exe
+          key: ${{ runner.os }}-cargo-wix-v1
+          fail-on-cache-miss: true
+
+      - name: Install WiX Toolset
+        shell: pwsh
+        run: |
+          curl -L -o wix311-binaries.zip https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip
+          Expand-Archive wix311-binaries.zip -DestinationPath wix
+          $env:PATH += ";$(Get-Location)\wix"
+          echo "$(Get-Location)\wix" | Out-File -FilePath $env:GITHUB_PATH -Append
+
+      - name: Build Windows binary
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Create zip archive
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "target/${{ matrix.target }}/release/tree.exe" -DestinationPath "tree-${{ inputs.version_tag }}-${{ matrix.name }}.zip" -Force
+
+      - name: Upload zip artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tree-${{ inputs.version_tag }}-${{ matrix.name }}-zip
+          path: tree-${{ inputs.version_tag }}-${{ matrix.name }}.zip
+
+      - name: Copy executable with version in filename
+        shell: pwsh
+        run: |
+          Copy-Item "target/${{ matrix.target }}/release/tree.exe" -Destination "tree-${{ inputs.version_tag }}_${{ matrix.name }}.exe" -Force
+
+      - name: Upload executable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tree-${{ inputs.version_tag }}_${{ matrix.name }}-exe
+          path: tree-${{ inputs.version_tag }}_${{ matrix.name }}.exe
+
+      - name: Create MSI package
+        shell: pwsh
+        run: |
+          # Build MSI with debug output
+          cargo wix --target ${{ matrix.target }} --output "tree-${{ inputs.version_tag }}-${{ matrix.name }}.msi" --nocapture
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tree-${{ inputs.version_tag }}-${{ matrix.name }}-msi
+          path: tree-${{ inputs.version_tag }}-${{ matrix.name }}.msi
