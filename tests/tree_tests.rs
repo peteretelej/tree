@@ -1,6 +1,6 @@
 use std::fs::{self, create_dir_all};
-use std::process::Command;
 use std::path::PathBuf;
+use std::process::Command;
 
 fn run_cmd(arg: &[&str]) -> String {
     let binary_path = if cfg!(windows) {
@@ -84,8 +84,7 @@ fn assert_contains_path(haystack: &str, needle: &str) {
     assert!(
         contains,
         "Output should contain path '{}' (or Windows equivalent '{}')",
-        unix_style,
-        windows_style
+        unix_style, windows_style
     );
 }
 
@@ -176,14 +175,21 @@ fn test_pattern_and_dir_only() {
 
 #[test]
 fn test_exact_output_simple() {
-    let base = create_fixture("exact_simple", &[
-        ("dir_a/file_a1.txt", Some("a1")),
-        ("dir_b/", None), // Empty dir
-        ("file_root.txt", Some("root")),
-    ]);
+    let base = create_fixture(
+        "exact_simple",
+        &[
+            ("dir_a/file_a1.txt", Some("a1")),
+            ("dir_b/", None), // Empty dir
+            ("file_root.txt", Some("root")),
+        ],
+    );
 
     let output = run_cmd(&[&base]);
-    let base_name = PathBuf::from(&base).file_name().unwrap().to_string_lossy().to_string();
+    let base_name = PathBuf::from(&base)
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .to_string();
 
     // Construct expected output carefully, sensitive to platform line endings potentially
     let expected_lines = [
@@ -193,24 +199,30 @@ fn test_exact_output_simple() {
         "├── dir_b",
         "└── file_root.txt",
         "", // Empty line before summary
-        "2 directories, 2 files"
+        "2 directories, 2 files",
     ];
     let expected_output = expected_lines.join("\n");
 
     // Normalize line endings in actual output for comparison
     let normalized_output = output.trim_end().replace("\r\n", "\n");
 
-    assert_eq!(normalized_output, expected_output, "Output mismatch for exact structure test");
+    assert_eq!(
+        normalized_output, expected_output,
+        "Output mismatch for exact structure test"
+    );
 
     cleanup_dynamic_fixture(&base);
 }
 
 #[test]
 fn test_hidden_directory() {
-    let base = create_fixture("hidden_dir", &[
-        (".hiddendir/file_in_hidden.txt", Some("hidden")),
-        ("visible_file.txt", Some("visible")),
-    ]);
+    let base = create_fixture(
+        "hidden_dir",
+        &[
+            (".hiddendir/file_in_hidden.txt", Some("hidden")),
+            ("visible_file.txt", Some("visible")),
+        ],
+    );
 
     let default_output = run_cmd(&[&base]);
     assert!(!default_output.contains(".hiddendir"));
@@ -227,11 +239,14 @@ fn test_hidden_directory() {
 
 #[test]
 fn test_combined_options() {
-    let base = create_fixture("combined", &[
-        ("dir1/subdir1/file1.txt", Some("abc")),
-        ("dir1/.hidden_file", Some("hidden")),
-        ("dir2/file2.log", Some("log data")),
-    ]);
+    let base = create_fixture(
+        "combined",
+        &[
+            ("dir1/subdir1/file1.txt", Some("abc")),
+            ("dir1/.hidden_file", Some("hidden")),
+            ("dir2/file2.log", Some("log data")),
+        ],
+    );
 
     // Restore original flags
     let output = run_cmd(&["-L", "2", "-s", "-f", "-a", &base]);
@@ -246,19 +261,57 @@ fn test_combined_options() {
     let lines: Vec<&str> = output.lines().collect();
 
     let dir1_path = format!("{}{}dir1", base_path_str, std::path::MAIN_SEPARATOR);
-    assert!(lines.iter().any(|line| line.ends_with(&dir1_path)), "Output should contain line ending with: {}", dir1_path);
+    assert!(
+        lines.iter().any(|line| line.ends_with(&dir1_path)),
+        "Output should contain line ending with: {}",
+        dir1_path
+    );
 
-    let hidden_file_path = format!("{}{}dir1{}.hidden_file", base_path_str, std::path::MAIN_SEPARATOR, std::path::MAIN_SEPARATOR);
-    assert!(lines.iter().any(|line| line.contains(&hidden_file_path) && line.contains("6B]")), "Output should contain line with: {} and size", hidden_file_path);
+    let hidden_file_path = format!(
+        "{}{}dir1{}.hidden_file",
+        base_path_str,
+        std::path::MAIN_SEPARATOR,
+        std::path::MAIN_SEPARATOR
+    );
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.contains(&hidden_file_path) && line.contains("6B]")),
+        "Output should contain line with: {} and size",
+        hidden_file_path
+    );
 
-    let subdir1_path = format!("{}{}dir1{}subdir1", base_path_str, std::path::MAIN_SEPARATOR, std::path::MAIN_SEPARATOR);
-    assert!(lines.iter().any(|line| line.ends_with(&subdir1_path)), "Output should contain line ending with: {}", subdir1_path);
+    let subdir1_path = format!(
+        "{}{}dir1{}subdir1",
+        base_path_str,
+        std::path::MAIN_SEPARATOR,
+        std::path::MAIN_SEPARATOR
+    );
+    assert!(
+        lines.iter().any(|line| line.ends_with(&subdir1_path)),
+        "Output should contain line ending with: {}",
+        subdir1_path
+    );
 
-    let file2_log_path = format!("{}{}dir2{}file2.log", base_path_str, std::path::MAIN_SEPARATOR, std::path::MAIN_SEPARATOR);
-    assert!(lines.iter().any(|line| line.contains(&file2_log_path) && line.contains("8B]")), "Output should contain line with: {} and size", file2_log_path);
+    let file2_log_path = format!(
+        "{}{}dir2{}file2.log",
+        base_path_str,
+        std::path::MAIN_SEPARATOR,
+        std::path::MAIN_SEPARATOR
+    );
+    assert!(
+        lines
+            .iter()
+            .any(|line| line.contains(&file2_log_path) && line.contains("8B]")),
+        "Output should contain line with: {} and size",
+        file2_log_path
+    );
 
     // Check that deeper paths are NOT present
-    assert!(!output.contains("file1.txt"), "file1.txt (depth 2) should not be present with -L 2");
+    assert!(
+        !output.contains("file1.txt"),
+        "file1.txt (depth 2) should not be present with -L 2"
+    );
 
     cleanup_dynamic_fixture(&base);
 }
@@ -269,7 +322,11 @@ fn test_size_options() {
     create_dir_all(&base).unwrap();
     fs::write(format!("{}/sized_file.txt", base), "x".repeat(1024)).unwrap();
     fs::write(format!("{}/bytes_file.txt", base), "xyz").unwrap();
-    fs::write(format!("{}/megabyte_file.bin", base), vec![0u8; 1024 * 1024]).unwrap(); // 1 MB file
+    fs::write(
+        format!("{}/megabyte_file.bin", base),
+        vec![0u8; 1024 * 1024],
+    )
+    .unwrap(); // 1 MB file
     fs::write(format!("{}/zero_byte.txt", base), "").unwrap(); // 0 byte file
 
     let size = run_cmd(&["-s", &base]);
@@ -328,12 +385,21 @@ fn test_exclude_pattern() {
 
     // Test exclude with hidden files
     let with_hidden = run_cmd(&["-I", "*.txt", "-a", "tests/fixtures/hidden"]);
-    assert!(!with_hidden.contains(".hidden.txt"), "Should not show hidden .txt files when excluded");
+    assert!(
+        !with_hidden.contains(".hidden.txt"),
+        "Should not show hidden .txt files when excluded"
+    );
 
     // Test exclude pattern with directories
     let exclude_dir = run_cmd(&["-I", "dir1", "tests/fixtures/basic"]);
-    assert!(!exclude_dir.contains("dir1"), "Should not show excluded directory");
-    assert!(exclude_dir.contains("dir2"), "Should show non-excluded directory");
+    assert!(
+        !exclude_dir.contains("dir1"),
+        "Should not show excluded directory"
+    );
+    assert!(
+        exclude_dir.contains("dir2"),
+        "Should show non-excluded directory"
+    );
 
     // Test multiple patterns (glob crate doesn't support `|` directly in one pattern)
     // Need to handle this in the argument parsing or logic if required,

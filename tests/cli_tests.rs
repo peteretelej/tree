@@ -1,5 +1,5 @@
-use clap::Parser;
 use assert_cmd::Command;
+use clap::Parser;
 use std::fs;
 use tempfile::tempdir;
 
@@ -166,10 +166,10 @@ fn test_output_to_file() -> Result<(), Box<dyn std::error::Error>> {
     // Run the `tree` command scanning the content directory, outputting outside
     let mut cmd = Command::cargo_bin("tree")?;
     cmd.arg(content_dir_path.to_str().unwrap())
-       .arg("-o")
-       .arg(output_path_str)
-       .assert()
-       .success();
+        .arg("-o")
+        .arg(output_path_str)
+        .assert()
+        .success();
 
     // Read the contents of the output file
     let output_content = fs::read_to_string(&output_path)?;
@@ -179,7 +179,8 @@ fn test_output_to_file() -> Result<(), Box<dyn std::error::Error>> {
     assert!(output_content.contains("dummy.txt"));
     assert!(
         output_content.contains("0 directories, 1 file"),
-        "Summary line '0 directories, 1 file' not found in output: {}\n", output_content
+        "Summary line '0 directories, 1 file' not found in output: {}\n",
+        output_content
     );
 
     // Clean up the output file manually as it's outside the tempdir scope
@@ -200,11 +201,12 @@ fn test_file_limit() -> Result<(), Box<dyn std::error::Error>> {
     fs::write(sub_dir.join("file3.txt"), "3")?;
     fs::write(root.join("root_file.txt"), "root")?;
 
-    // --- Test 1: Run without filelimit (output to file) --- 
+    // --- Test 1: Run without filelimit (output to file) ---
     let output_path1 = root.parent().unwrap().join("output1.txt");
     let mut cmd1 = Command::cargo_bin("tree")?;
     cmd1.arg(root.to_str().unwrap())
-        .arg("-o").arg(&output_path1)
+        .arg("-o")
+        .arg(&output_path1)
         .assert()
         .success();
     let content1 = fs::read_to_string(&output_path1)?;
@@ -217,20 +219,29 @@ fn test_file_limit() -> Result<(), Box<dyn std::error::Error>> {
     assert!(content1.contains("file3.txt"));
     assert!(content1.contains("root_file.txt"));
     // Check summary components separately to avoid newline issues
-    assert!(content1.contains("1 directory"), "Test 1 Summary Failed (dir count): Content was\n{}", content1);
-    assert!(content1.contains("4 files"), "Test 1 Summary Failed (file count): Content was\n{}", content1);
+    assert!(
+        content1.contains("1 directory"),
+        "Test 1 Summary Failed (dir count): Content was\n{}",
+        content1
+    );
+    assert!(
+        content1.contains("4 files"),
+        "Test 1 Summary Failed (file count): Content was\n{}",
+        content1
+    );
 
-    // --- Test 2: Run with filelimit = 2 (output to file) --- 
+    // --- Test 2: Run with filelimit = 2 (output to file) ---
     let output_path2 = root.parent().unwrap().join("output2.txt");
     let mut cmd2 = Command::cargo_bin("tree")?;
     cmd2.arg(root.to_str().unwrap())
         .arg("--filelimit=2")
-        .arg("-o").arg(&output_path2)
+        .arg("-o")
+        .arg(&output_path2)
         .assert()
         .success();
     let content2 = fs::read_to_string(&output_path2)?;
     fs::remove_file(&output_path2)?; // Clean up
-    
+
     println!("Content with --filelimit=2:\n{}", content2); // Debug print
     assert!(content2.contains("sub_dir"));
     assert!(!content2.contains("file1.txt"));
@@ -238,8 +249,16 @@ fn test_file_limit() -> Result<(), Box<dyn std::error::Error>> {
     assert!(!content2.contains("file3.txt"));
     assert!(content2.contains("root_file.txt"));
     // Check summary components separately
-    assert!(content2.contains("1 directory"), "Test 2 Summary Failed (dir count): Content was\n{}", content2);
-    assert!(content2.contains("1 file"), "Test 2 Summary Failed (file count): Content was\n{}", content2);
+    assert!(
+        content2.contains("1 directory"),
+        "Test 2 Summary Failed (dir count): Content was\n{}",
+        content2
+    );
+    assert!(
+        content2.contains("1 file"),
+        "Test 2 Summary Failed (file count): Content was\n{}",
+        content2
+    );
 
     Ok(())
 }
@@ -255,7 +274,7 @@ fn test_dirsfirst() -> Result<(), Box<dyn std::error::Error>> {
     fs::write(root.join("file_c.txt"), "c")?;
     fs::write(root.join("file_a.txt"), "a")?;
 
-    // --- Test 1: Default (no --dirsfirst) --- 
+    // --- Test 1: Default (no --dirsfirst) ---
     let mut cmd1 = Command::cargo_bin("tree")?;
     cmd1.arg(root.to_str().unwrap());
     let output1 = cmd1.output()?;
@@ -273,7 +292,7 @@ fn test_dirsfirst() -> Result<(), Box<dyn std::error::Error>> {
     assert!(pos_file_c < pos_sub_dir_a);
     assert!(pos_sub_dir_a < pos_sub_dir_b);
 
-    // --- Test 2: With --dirsfirst --- 
+    // --- Test 2: With --dirsfirst ---
     let mut cmd2 = Command::cargo_bin("tree")?;
     cmd2.arg(root.to_str().unwrap()).arg("--dirsfirst");
     let output2 = cmd2.output()?;
@@ -290,15 +309,17 @@ fn test_dirsfirst() -> Result<(), Box<dyn std::error::Error>> {
     assert!(pos_sub_dir_a_2 < pos_sub_dir_b_2);
     assert!(pos_sub_dir_b_2 < pos_file_a_2);
     assert!(pos_file_a_2 < pos_file_c_2);
-    
-    // --- Test 3: With --dirsfirst and --reverse --- 
+
+    // --- Test 3: With --dirsfirst and --reverse ---
     let mut cmd3 = Command::cargo_bin("tree")?;
-    cmd3.arg(root.to_str().unwrap()).arg("--dirsfirst").arg("-r");
+    cmd3.arg(root.to_str().unwrap())
+        .arg("--dirsfirst")
+        .arg("-r");
     let output3 = cmd3.output()?;
     cmd3.assert().success();
     let content3 = String::from_utf8(output3.stdout)?;
     println!("Content with --dirsfirst -r:\n{}", content3);
-    
+
     // Dirs first (reverse alphabetical within type): sub_dir_b, sub_dir_a, file_c, file_a
     let pos_sub_dir_b_3 = content3.find("sub_dir_b").unwrap_or(usize::MAX);
     let pos_sub_dir_a_3 = content3.find("sub_dir_a").unwrap_or(usize::MAX);
@@ -341,22 +362,43 @@ fn test_classify_flag() -> Result<(), Box<dyn std::error::Error>> {
     println!("Content with -F:\n{}", content);
 
     // Assertions
-    assert!(content.contains("sub_dir/"), "Expected directory indicator not found");
-    assert!(content.contains("file.txt"), "Expected file without indicator not found"); // No indicator for normal file
-    assert!(!content.contains("file.txt/") && !content.contains("file.txt*"), "File.txt should not have indicators");
-    
+    assert!(
+        content.contains("sub_dir/"),
+        "Expected directory indicator not found"
+    );
+    assert!(
+        content.contains("file.txt"),
+        "Expected file without indicator not found"
+    ); // No indicator for normal file
+    assert!(
+        !content.contains("file.txt/") && !content.contains("file.txt*"),
+        "File.txt should not have indicators"
+    );
+
     #[cfg(unix)]
     {
-        assert!(content.contains("script.sh*"), "Expected executable indicator not found on Unix");
+        assert!(
+            content.contains("script.sh*"),
+            "Expected executable indicator not found on Unix"
+        );
     }
     #[cfg(not(unix))] // On Windows, expect no indicator
     {
-        assert!(content.contains("script.sh"), "Expected script.sh without indicator not found on Windows");
-        assert!(!content.contains("script.sh*"), "Script.sh should not have executable indicator on Windows");
+        assert!(
+            content.contains("script.sh"),
+            "Expected script.sh without indicator not found on Windows"
+        );
+        assert!(
+            !content.contains("script.sh*"),
+            "Script.sh should not have executable indicator on Windows"
+        );
     }
 
     // Check summary
-    assert!(content.contains("1 directory, 2 files"), "Summary incorrect");
+    assert!(
+        content.contains("1 directory, 2 files"),
+        "Summary incorrect"
+    );
 
     Ok(())
 }
@@ -368,7 +410,7 @@ fn test_no_report_flag() -> Result<(), Box<dyn std::error::Error>> {
     fs::write(root.join("file1.txt"), "1")?;
     fs::write(root.join("file2.txt"), "2")?;
 
-    // --- Test 1: Default (with report) --- 
+    // --- Test 1: Default (with report) ---
     let mut cmd1 = Command::cargo_bin("tree")?;
     cmd1.arg(root.to_str().unwrap());
     let output1 = cmd1.output()?;
@@ -378,9 +420,12 @@ fn test_no_report_flag() -> Result<(), Box<dyn std::error::Error>> {
 
     assert!(content1.contains("file1.txt"));
     assert!(content1.contains("file2.txt"));
-    assert!(content1.contains("0 directories, 2 files"), "Expected summary report not found");
+    assert!(
+        content1.contains("0 directories, 2 files"),
+        "Expected summary report not found"
+    );
 
-    // --- Test 2: With --noreport --- 
+    // --- Test 2: With --noreport ---
     let mut cmd2 = Command::cargo_bin("tree")?;
     cmd2.arg(root.to_str().unwrap()).arg("--noreport");
     let output2 = cmd2.output()?;
@@ -390,10 +435,17 @@ fn test_no_report_flag() -> Result<(), Box<dyn std::error::Error>> {
 
     assert!(content2.contains("file1.txt"));
     assert!(content2.contains("file2.txt"));
-    assert!(!content2.contains("directories, ") && !content2.contains("files"), "Summary report should be omitted");
+    assert!(
+        !content2.contains("directories, ") && !content2.contains("files"),
+        "Summary report should be omitted"
+    );
     // A more robust check: ensure the last line doesn't match the summary pattern
     let last_line = content2.trim_end().lines().last().unwrap_or("");
-    assert!(!last_line.contains("directories") && !last_line.contains("files"), "Last line appears to be the summary report: {}", last_line);
+    assert!(
+        !last_line.contains("directories") && !last_line.contains("files"),
+        "Last line appears to be the summary report: {}",
+        last_line
+    );
 
     Ok(())
 }
@@ -432,22 +484,35 @@ fn test_permissions_flag() -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(unix)]
     {
         // Check for specific permission strings
-        assert!(content.contains("[-rw-r--r--]"), "Expected file permissions not found");
+        assert!(
+            content.contains("[-rw-r--r--]"),
+            "Expected file permissions not found"
+        );
         // Directory permissions depend on umask, check for the dir prefix
-        assert!(content.contains("[d"), "Expected directory permissions prefix not found");
+        assert!(
+            content.contains("[d"),
+            "Expected directory permissions prefix not found"
+        );
         assert!(
             content.find("[-rw-r--r--]").unwrap_or(0) < content.find("file.txt").unwrap_or(0),
             "Permissions should precede file name"
         );
         assert!(
-            content.find("[drw").unwrap_or(usize::MAX) < content.find("sub_dir").unwrap_or(usize::MAX),
+            content.find("[drw").unwrap_or(usize::MAX)
+                < content.find("sub_dir").unwrap_or(usize::MAX),
             "Permissions should precede dir name"
         );
     }
     #[cfg(not(unix))] // On Windows, expect no permission strings
     {
-        assert!(!content.contains("["), "Permissions brackets should not appear on Windows");
-        assert!(!content.contains("]"), "Permissions brackets should not appear on Windows");
+        assert!(
+            !content.contains("["),
+            "Permissions brackets should not appear on Windows"
+        );
+        assert!(
+            !content.contains("]"),
+            "Permissions brackets should not appear on Windows"
+        );
     }
 
     // Check summary is still there

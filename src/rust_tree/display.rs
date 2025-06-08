@@ -7,7 +7,7 @@ pub fn colorize(entry: &fs::DirEntry, text: &str) -> String {
         Ok(ft) => ft,
         Err(_) => return text.to_string(), // Return original text if file type fails
     };
-    
+
     // Use is_executable crate for cross-platform check
     let is_exec = entry.path().is_executable();
 
@@ -33,7 +33,7 @@ pub fn colorize(entry: &fs::DirEntry, text: &str) -> String {
     }
 }
 
-// --- Permissions Formatting (Unix only) --- 
+// --- Permissions Formatting (Unix only) ---
 #[cfg(unix)]
 pub fn format_permissions_unix(mode: u32, is_dir: bool) -> String {
     let mut perms = String::with_capacity(10); // [drwxrwxrwx]

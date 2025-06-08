@@ -1,9 +1,9 @@
 use std::fs;
+use std::fs::OpenOptions;
+use std::io;
+use std::io::{BufWriter, Write};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
-use std::fs::{OpenOptions};
-use std::io::{BufWriter, Write};
-use std::io;
 
 // Add import for Unix permissions
 #[cfg(unix)]
@@ -22,31 +22,41 @@ fn format_date(time: SystemTime) -> String {
         Ok(duration) => {
             let secs = duration.as_secs();
             let time_parts = (
-                (secs / 86400) % 36525,            // days since epoch
-                ((secs / 3600) % 24),              // hours
-                ((secs / 60) % 60),                // minutes
-                (secs % 60)                        // seconds
+                (secs / 86400) % 36525, // days since epoch
+                ((secs / 3600) % 24),   // hours
+                ((secs / 60) % 60),     // minutes
+                (secs % 60),            // seconds
             );
-            
+
             // Start with Unix epoch (1970-01-01) and add days
             let mut year = 1970;
             let mut month = 1;
             let mut day = 1;
             let mut days_left = time_parts.0;
-            
+
             // Simple date calculation - consider leap years, etc.
             while days_left > 0 {
-                let days_in_year = if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 { 366 } else { 365 };
+                let days_in_year = if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 {
+                    366
+                } else {
+                    365
+                };
                 if days_left >= days_in_year {
                     days_left -= days_in_year;
                     year += 1;
                 } else {
                     let days_in_month = match month {
-                        2 => if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 { 29 } else { 28 },
+                        2 => {
+                            if (year % 4 == 0 && year % 100 != 0) || year % 400 == 0 {
+                                29
+                            } else {
+                                28
+                            }
+                        }
                         4 | 6 | 9 | 11 => 30,
-                        _ => 31
+                        _ => 31,
                     };
-                    
+
                     if days_left >= days_in_month {
                         days_left -= days_in_month;
                         month += 1;
@@ -60,14 +70,13 @@ fn format_date(time: SystemTime) -> String {
                     }
                 }
             }
-            
+
             format!(
                 "{:04}-{:02}-{:02} {:02}:{:02}:{:02}",
-                year, month, day, 
-                time_parts.1, time_parts.2, time_parts.3
+                year, month, day, time_parts.1, time_parts.2, time_parts.3
             )
-        },
-        Err(_) => String::from("Unknown date")
+        }
+        Err(_) => String::from("Unknown date"),
     }
 }
 
@@ -135,7 +144,7 @@ fn format_entry_line(
             line.push(' '); // Add space after permissions
         }
         #[cfg(not(unix))] // On non-unix, add placeholder space? Or just nothing?
-        { 
+        {
             // Currently adds nothing on non-Unix platforms
         }
     }
@@ -177,7 +186,7 @@ fn format_entry_line(
     };
     line.push_str(&colored_name);
 
-    // --- Append indicator if -F/--classify is enabled --- 
+    // --- Append indicator if -F/--classify is enabled ---
     if options.classify {
         let indicator = if file_type.is_dir() {
             "/"
@@ -223,7 +232,11 @@ fn format_entry_line(
                 line.push_str(&date_str);
             }
             Err(e) => {
-                eprintln!("Warning: Could not get modification date for {:?}: {}", entry.path(), e);
+                eprintln!(
+                    "Warning: Could not get modification date for {:?}: {}",
+                    entry.path(),
+                    e
+                );
             }
         }
     }
@@ -240,7 +253,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
     stats: &mut (u64, u64),
     indent_state: &[bool],
 ) -> std::io::Result<()> {
-    // --- 1. Read and Pre-process Directory Entries --- 
+    // --- 1. Read and Pre-process Directory Entries ---
     let read_dir_result = fs::read_dir(current_path);
     let mut entries_info: Vec<EntryInfo> = match read_dir_result {
         Ok(reader) => reader
@@ -279,22 +292,28 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
         }
     };
 
-    // --- 2. Sort Entries --- 
+    // --- 2. Sort Entries ---
     if options.dirs_first {
         // Partition into directories and files, handling potential file_type errors
-        let (mut dirs, mut files): (Vec<EntryInfo>, Vec<EntryInfo>) = std::mem::take(&mut entries_info)
-            .into_iter()
-            .partition(|info| {
-                // Treat entries where file_type fails as non-directories
-                info.entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false)
-            });
+        let (mut dirs, mut files): (Vec<EntryInfo>, Vec<EntryInfo>) =
+            std::mem::take(&mut entries_info)
+                .into_iter()
+                .partition(|info| {
+                    // Treat entries where file_type fails as non-directories
+                    info.entry
+                        .file_type()
+                        .map(|ft| ft.is_dir())
+                        .unwrap_or(false)
+                });
 
         // Define the comparison logic based on sort_by_time
         let sort_comparison = |a: &EntryInfo, b: &EntryInfo| {
             if options.sort_by_time {
                 let time_a = a.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
                 let time_b = b.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
-                time_a.cmp(time_b).then_with(|| a.entry.file_name().cmp(&b.entry.file_name()))
+                time_a
+                    .cmp(time_b)
+                    .then_with(|| a.entry.file_name().cmp(&b.entry.file_name()))
             } else {
                 a.entry.file_name().cmp(&b.entry.file_name())
             }
@@ -313,10 +332,9 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
         // Combine back, dirs first
         entries_info = dirs;
         entries_info.append(&mut files);
-
     } else {
         // Original sorting logic if dirs_first is not enabled
-        if options.sort_by_time { 
+        if options.sort_by_time {
             entries_info.sort_by(|a, b| {
                 let time_a = a.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
                 let time_b = b.mod_time.as_ref().unwrap_or(&SystemTime::UNIX_EPOCH);
@@ -332,7 +350,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
         }
     }
 
-    // --- 4. Iterate, Print, Count Stats, and Recurse (conditionally) --- 
+    // --- 4. Iterate, Print, Count Stats, and Recurse (conditionally) ---
     let last_index = entries_info.len().saturating_sub(1);
     for (index, info) in entries_info.into_iter().enumerate() {
         let entry = info.entry;
@@ -347,14 +365,14 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
         if entry.file_type()?.is_dir() {
             stats.0 += 1; // Count this directory
 
-            // --- Check limits specifically for this directory before recursion --- 
+            // --- Check limits specifically for this directory before recursion ---
             let mut skip_recursion = false;
 
             // 1. Check level limit for the *next* level
             if let Some(max_level) = options.level {
                 // If the next depth (depth + 1) is >= max_level, we should not recurse.
                 // Remember depth is 0-indexed, max_level is 1-indexed.
-                if (depth + 1) >= max_level as usize { 
+                if (depth + 1) >= max_level as usize {
                     skip_recursion = true;
                 }
             }
@@ -362,11 +380,12 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
             // 2. Check file limit (only if level limit doesn't already skip)
             if !skip_recursion {
                 if let Some(limit) = options.file_limit {
-                    match fs::read_dir(&path) { // Read the *child* directory (`path`) to count its entries
+                    match fs::read_dir(&path) {
+                        // Read the *child* directory (`path`) to count its entries
                         Ok(reader) => {
-                            // Use iterator `count()` for efficiency. 
+                            // Use iterator `count()` for efficiency.
                             // This counts *raw* entries, matching standard `tree --filelimit` behavior.
-                            let entry_count = reader.count(); 
+                            let entry_count = reader.count();
                             if entry_count > limit as usize {
                                 skip_recursion = true;
                                 // Optionally: Add indicator like "[...]" to the printed line if skipped?
@@ -376,16 +395,16 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                             // If we can't read the directory to check the limit, log warning but don't skip.
                             eprintln!(
                                 "Warning: Could not read directory {:?} to check filelimit: {}",
-                                path,
-                                e
+                                path, e
                             );
                         }
                     }
                 }
             }
-            // --- End limit checks --- 
+            // --- End limit checks ---
 
-            if !skip_recursion { // Recurse only if no limits apply
+            if !skip_recursion {
+                // Recurse only if no limits apply
                 let mut next_indent_state = indent_state.to_vec();
                 next_indent_state.push(is_entry_last);
                 traverse_directory(
@@ -398,7 +417,8 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                     &next_indent_state,
                 )?;
             }
-        } else { // It's a file
+        } else {
+            // It's a file
             stats.1 += 1; // Count this file
         }
     }
@@ -438,7 +458,7 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
 
     // Start the recursive traversal with empty initial indent state
     traverse_directory(
-        &mut writer, // Pass the writer
+        &mut writer,  // Pass the writer
         current_path, // Use original path for root comparison
         current_path,
         options,
@@ -450,11 +470,19 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
     // Print summary only if --noreport is not set
     if !options.no_report {
         //println!("\n{} directories, {} files", stats.0, stats.1);
-        let dir_str = if stats.0 == 1 { "directory" } else { "directories" };
+        let dir_str = if stats.0 == 1 {
+            "directory"
+        } else {
+            "directories"
+        };
         let file_str = if stats.1 == 1 { "file" } else { "files" };
-        writeln!(writer, "\n{} {}, {} {}", stats.0, dir_str, stats.1, file_str)?;
+        writeln!(
+            writer,
+            "\n{} {}, {} {}",
+            stats.0, dir_str, stats.1, file_str
+        )?;
     }
-    
+
     writer.flush()?; // Explicitly flush the buffer
     Ok(())
 }
