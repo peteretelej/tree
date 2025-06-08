@@ -2,7 +2,8 @@
 
 Documentation & assets for submission of [tree](https://github.com/peteretelej/tree) to the Microsoft Store.
 
-**Store Link**: [Tree CLI on Microsoft Store](https://apps.microsoft.com/detail/9MVSM3J7ZJ7C)
+- **Store Link**: [Tree CLI on Microsoft Store](https://apps.microsoft.com/detail/9MVSM3J7ZJ7C)
+- Partner Center Link: https://partner.microsoft.com/en-us/dashboard/products/9MVSM3J7ZJ7C/overview
 
 - Store app executable name: `treecli.exe`
 
@@ -15,7 +16,7 @@ Documentation & assets for submission of [tree](https://github.com/peteretelej/t
 ## Build Process
 
 1. **Package**: Release executable → AdvancedInstaller → MSI package
-2. **Submit**: Upload MSI to Microsoft Store via Partner Center
+2. **Submit**: Upload MSI to Microsoft Store via Partner Center - https://partner.microsoft.com/en-us/dashboard/home
 3. **Requirements**: AdvancedInstaller license for full features
 
 ## Asset Generation
@@ -36,3 +37,7 @@ Open any `.aip` file and use the Asset Generator with `tree-1024.png`. Generated
 
 - Universal Windows > Package Information > Logo Section > Asset Generator
 - Universal Windows > Visual Assets > Asset Generator
+
+### Issues
+
+- Sometimes Partner Center uses the wrong tenant and you can't view your apps. Go to the Access Page then try to click on another tenant (top left profile menu items).

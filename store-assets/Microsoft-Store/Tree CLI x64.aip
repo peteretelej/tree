@@ -3,7 +3,6 @@
   <COMPONENT cid="caphyon.advinst.msicomp.ProjectOptionsComponent">
     <ROW Name="Application_1_AssetGenDestFolderPath" Value="Generated Assets" ValueType="1"/>
     <ROW Name="Application_1_AssetGenSourceFilePath" Value="image-assets\tree-1024.png" ValueType="1"/>
-    <ROW Name="Application_1_WorkingDir" Value="APPDIR"/>
     <ROW Name="Application_AssetGenDestFolderPath" Value="Generated Assets" ValueType="1"/>
     <ROW Name="Application_AssetGenSourceFilePath" Value="image-assets\tree-1024.png" ValueType="1"/>
     <ROW Name="AssetGenPkgDestFolderPath" Value="Generated Assets" ValueType="1"/>
@@ -42,7 +41,6 @@
     <ROW Component="RegistryEntries" ComponentId="{7C577236-74C4-5AA6-B2DA-FE2B2BCDBAA8}" Directory_="APPLICATIONFOLDER" Attributes="260" KeyPath="reg19B46D4ED25B8AE86B6E48076B0631CB"/>
     <ROW Component="Store50x50Logo.scale100.png" ComponentId="{836486FA-AF86-438F-A986-57341FEC5087}" Directory_="Assets" Attributes="0" KeyPath="Store50x50Logo.scale100.png" Type="0"/>
     <ROW Component="binary0" ComponentId="{E3A99501-B4C0-50F3-8B45-948E7EFDE3EB}" Directory_="Bin" Attributes="256" KeyPath="exe0"/>
-    <ROW Component="treeclilauncher.bat" ComponentId="{B11723E7-260B-43FA-9A86-1E2FCA5F91B0}" Directory_="APPDIR" Attributes="0" KeyPath="treeclilauncher.bat" Type="0"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiFeatsComponent">
     <ROW Feature="AiAppXAssets" Title="AiAppXAssets" Description="Description" Display="5" Level="0" Directory_="APPDIR" Attributes="0" Options="271" Builds="Build_MSIX_APPX"/>
@@ -57,57 +55,6 @@
     <ROW File="Store50x50Logo.scale100.png" Component_="Store50x50Logo.scale100.png" FileName="STORE5~2.PNG|Store50x50Logo.scale-100.png" Attributes="0" SourcePath="Generated Assets\Store50x50Logo.scale-100.png" SelfReg="false"/>
     <ROW File="treecli.exeSquare150x150Logo.scale100.png" Component_="Store50x50Logo.scale100.png" FileName="TREECL~6.PNG|treecli.exeSquare150x150Logo.scale-100.png" Attributes="0" SourcePath="Generated Assets\treecli.exeSquare150x150Logo.scale-100.png" SelfReg="false"/>
     <ROW File="treecli.exeSquare44x44Logo.scale100.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~21.PNG|treecli.exeSquare44x44Logo.scale-100.png" Attributes="0" SourcePath="Generated Assets\treecli.exeSquare44x44Logo.scale-100.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.bat" Component_="treeclilauncher.bat" FileName="TREECL~1.BAT|treecli-launcher.bat" Attributes="0" SourcePath="treecli-launcher.bat" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.scale100.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~51.PNG|treeclilauncher.batSquare44x44Logo.scale-100.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.scale-100.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare150x150Logo.scale100.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~52.PNG|treeclilauncher.batSquare150x150Logo.scale-100.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare150x150Logo.scale-100.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare71x71Logo.scale100.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~53.PNG|treeclilauncher.batSquare71x71Logo.scale-100.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare71x71Logo.scale-100.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare71x71Logo.scale125.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~54.PNG|treeclilauncher.batSquare71x71Logo.scale-125.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare71x71Logo.scale-125.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare71x71Logo.scale150.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~55.PNG|treeclilauncher.batSquare71x71Logo.scale-150.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare71x71Logo.scale-150.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare71x71Logo.scale200.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~56.PNG|treeclilauncher.batSquare71x71Logo.scale-200.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare71x71Logo.scale-200.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare71x71Logo.scale400.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~57.PNG|treeclilauncher.batSquare71x71Logo.scale-400.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare71x71Logo.scale-400.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare150x150Logo.scale125.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~58.PNG|treeclilauncher.batSquare150x150Logo.scale-125.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare150x150Logo.scale-125.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare150x150Logo.scale150.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~59.PNG|treeclilauncher.batSquare150x150Logo.scale-150.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare150x150Logo.scale-150.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare150x150Logo.scale200.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~60.PNG|treeclilauncher.batSquare150x150Logo.scale-200.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare150x150Logo.scale-200.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare150x150Logo.scale400.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~61.PNG|treeclilauncher.batSquare150x150Logo.scale-400.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare150x150Logo.scale-400.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batWide310x150Logo.scale100.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~62.PNG|treeclilauncher.batWide310x150Logo.scale-100.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batWide310x150Logo.scale-100.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batWide310x150Logo.scale125.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~63.PNG|treeclilauncher.batWide310x150Logo.scale-125.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batWide310x150Logo.scale-125.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batWide310x150Logo.scale150.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~64.PNG|treeclilauncher.batWide310x150Logo.scale-150.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batWide310x150Logo.scale-150.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batWide310x150Logo.scale200.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~65.PNG|treeclilauncher.batWide310x150Logo.scale-200.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batWide310x150Logo.scale-200.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batWide310x150Logo.scale400.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~66.PNG|treeclilauncher.batWide310x150Logo.scale-400.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batWide310x150Logo.scale-400.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare310x310Logo.scale100.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~67.PNG|treeclilauncher.batSquare310x310Logo.scale-100.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare310x310Logo.scale-100.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare310x310Logo.scale125.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~68.PNG|treeclilauncher.batSquare310x310Logo.scale-125.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare310x310Logo.scale-125.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare310x310Logo.scale150.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~69.PNG|treeclilauncher.batSquare310x310Logo.scale-150.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare310x310Logo.scale-150.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare310x310Logo.scale200.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~70.PNG|treeclilauncher.batSquare310x310Logo.scale-200.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare310x310Logo.scale-200.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare310x310Logo.scale400.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~71.PNG|treeclilauncher.batSquare310x310Logo.scale-400.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare310x310Logo.scale-400.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize16.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~72.PNG|treeclilauncher.batSquare44x44Logo.targetsize-16.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-16.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize16_altformunplated.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~73.PNG|treeclilauncher.batSquare44x44Logo.targetsize-16_altform-unplated.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-16_altform-unplated.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize16_altformlightunplated." Component_="Store50x50Logo.scale100.png" FileName="TREEC~74.PNG|treeclilauncher.batSquare44x44Logo.targetsize-16_altform-lightunplated.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-16_altform-lightunplated.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.scale125.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~75.PNG|treeclilauncher.batSquare44x44Logo.scale-125.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.scale-125.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize24.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~76.PNG|treeclilauncher.batSquare44x44Logo.targetsize-24.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-24.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize24_altformunplated.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~77.PNG|treeclilauncher.batSquare44x44Logo.targetsize-24_altform-unplated.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-24_altform-unplated.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize24_altformlightunplated." Component_="Store50x50Logo.scale100.png" FileName="TREEC~78.PNG|treeclilauncher.batSquare44x44Logo.targetsize-24_altform-lightunplated.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-24_altform-lightunplated.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.scale150.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~79.PNG|treeclilauncher.batSquare44x44Logo.scale-150.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.scale-150.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize32.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~80.PNG|treeclilauncher.batSquare44x44Logo.targetsize-32.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-32.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize32_altformunplated.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~81.PNG|treeclilauncher.batSquare44x44Logo.targetsize-32_altform-unplated.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-32_altform-unplated.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize32_altformlightunplated." Component_="Store50x50Logo.scale100.png" FileName="TREEC~82.PNG|treeclilauncher.batSquare44x44Logo.targetsize-32_altform-lightunplated.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-32_altform-lightunplated.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.scale200.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~83.PNG|treeclilauncher.batSquare44x44Logo.scale-200.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.scale-200.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize48.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~84.PNG|treeclilauncher.batSquare44x44Logo.targetsize-48.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-48.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize48_altformunplated.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~85.PNG|treeclilauncher.batSquare44x44Logo.targetsize-48_altform-unplated.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-48_altform-unplated.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize48_altformlightunplated." Component_="Store50x50Logo.scale100.png" FileName="TREEC~86.PNG|treeclilauncher.batSquare44x44Logo.targetsize-48_altform-lightunplated.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-48_altform-lightunplated.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.scale400.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~87.PNG|treeclilauncher.batSquare44x44Logo.scale-400.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.scale-400.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize256.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~88.PNG|treeclilauncher.batSquare44x44Logo.targetsize-256.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-256.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize256_altformunplated.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~89.PNG|treeclilauncher.batSquare44x44Logo.targetsize-256_altform-unplated.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-256_altform-unplated.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSquare44x44Logo.targetsize256_altformlightunplated" Component_="Store50x50Logo.scale100.png" FileName="TREEC~90.PNG|treeclilauncher.batSquare44x44Logo.targetsize-256_altform-lightunplated.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSquare44x44Logo.targetsize-256_altform-lightunplated.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSplashScreen.scale100.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~91.PNG|treeclilauncher.batSplashScreen.scale-100.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSplashScreen.scale-100.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSplashScreen.scale125.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~92.PNG|treeclilauncher.batSplashScreen.scale-125.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSplashScreen.scale-125.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSplashScreen.scale150.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~93.PNG|treeclilauncher.batSplashScreen.scale-150.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSplashScreen.scale-150.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSplashScreen.scale200.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~94.PNG|treeclilauncher.batSplashScreen.scale-200.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSplashScreen.scale-200.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batSplashScreen.scale400.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~95.PNG|treeclilauncher.batSplashScreen.scale-400.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batSplashScreen.scale-400.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batBadgeLogo.scale100.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~96.PNG|treeclilauncher.batBadgeLogo.scale-100.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batBadgeLogo.scale-100.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batBadgeLogo.scale125.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~97.PNG|treeclilauncher.batBadgeLogo.scale-125.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batBadgeLogo.scale-125.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batBadgeLogo.scale150.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~98.PNG|treeclilauncher.batBadgeLogo.scale-150.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batBadgeLogo.scale-150.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batBadgeLogo.scale200.png" Component_="Store50x50Logo.scale100.png" FileName="TREEC~99.PNG|treeclilauncher.batBadgeLogo.scale-200.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batBadgeLogo.scale-200.png" SelfReg="false"/>
-    <ROW File="treeclilauncher.batBadgeLogo.scale400.png" Component_="Store50x50Logo.scale100.png" FileName="TREE~100.PNG|treeclilauncher.batBadgeLogo.scale-400.png" Attributes="0" SourcePath="Generated Assets\treeclilauncher.batBadgeLogo.scale-400.png" SelfReg="false"/>
     <ROW File="Store50x50Logo.scale125.png" Component_="Store50x50Logo.scale100.png" FileName="STORE5~1.PNG|Store50x50Logo.scale-125.png" Attributes="0" SourcePath="Generated Assets\Store50x50Logo.scale-125.png" SelfReg="false"/>
     <ROW File="Store50x50Logo.scale150.png" Component_="Store50x50Logo.scale100.png" FileName="STORE5~3.PNG|Store50x50Logo.scale-150.png" Attributes="0" SourcePath="Generated Assets\Store50x50Logo.scale-150.png" SelfReg="false"/>
     <ROW File="Store50x50Logo.scale200.png" Component_="Store50x50Logo.scale100.png" FileName="STORE5~4.PNG|Store50x50Logo.scale-200.png" Attributes="0" SourcePath="Generated Assets\Store50x50Logo.scale-200.png" SelfReg="false"/>
@@ -198,28 +145,20 @@
     <ROW XmlAttribute="AllowUserInteraction" XmlElement="UX" Name="AllowUserInteraction" Flags="0" Order="0" Value="false"/>
     <ROW XmlAttribute="AppNameInTitle" XmlElement="UX" Name="AppNameInTitle" Flags="0" Order="0" Value="false"/>
     <ROW XmlAttribute="BackgroundColor" XmlElement="VisualElements" Name="BackgroundColor" Flags="0" Order="0" Value="transparent"/>
-    <ROW XmlAttribute="BackgroundColor_1" XmlElement="VisualElements_1" Name="BackgroundColor" Flags="0" Order="0" Value="transparent"/>
     <ROW XmlAttribute="BadgeLogo" XmlElement="LockScreen" Name="BadgeLogo" Flags="0" Order="0" FileId="treecli.exeBadgeLogo.scale100.png"/>
-    <ROW XmlAttribute="BadgeLogo_1" XmlElement="LockScreen_1" Name="BadgeLogo" Flags="0" Order="0" FileId="treeclilauncher.batBadgeLogo.scale100.png"/>
     <ROW XmlAttribute="Category" XmlElement="Extension" Name="Category" Flags="0" Order="0" Value="windows.appExecutionAlias"/>
     <ROW XmlAttribute="Description" XmlElement="VisualElements" Name="Description" Flags="0" Order="0" Value="Cross-platform tree command-line utility that displays directory structures in a tree-like format"/>
-    <ROW XmlAttribute="Description_1" XmlElement="VisualElements_1" Name="Description" Flags="0" Order="0" Value="Tree CLI Launcher"/>
     <ROW XmlAttribute="DisplayName" XmlElement="VisualElements" Name="DisplayName" Flags="0" Order="0" Value="treecli.exe"/>
-    <ROW XmlAttribute="DisplayName_1" XmlElement="VisualElements_1" Name="DisplayName" Flags="0" Order="0" Value="treecli-launcher.bat"/>
     <ROW XmlAttribute="EntryPoint" XmlElement="Application" Name="EntryPoint" Flags="0" Order="0" Value="Windows.FullTrustApplication"/>
     <ROW XmlAttribute="EntryPoint_1" XmlElement="Extension" Name="EntryPoint" Flags="0" Order="0" Value="Windows.FullTrustApplication"/>
-    <ROW XmlAttribute="EntryPoint_2" XmlElement="Application_1" Name="EntryPoint" Flags="0" Order="0" Value="Windows.FullTrustApplication"/>
     <ROW XmlAttribute="Executable" XmlElement="Application" Name="Executable" Flags="0" Order="0" FileId="exe0"/>
     <ROW XmlAttribute="Executable_1" XmlElement="Extension" Name="Executable" Flags="0" Order="0" FileId="exe0"/>
-    <ROW XmlAttribute="Executable_2" XmlElement="Application_1" Name="Executable" Flags="0" Order="0" FileId="treeclilauncher.bat"/>
     <ROW XmlAttribute="HorizontalAlignment" XmlElement="LaunchWhenReady" Name="HorizontalAlignment" Flags="0" Order="0" Value="left"/>
     <ROW XmlAttribute="HorizontalAlignment_1" XmlElement="Icon" Name="HorizontalAlignment" Flags="0" Order="0" Value="left"/>
     <ROW XmlAttribute="HorizontalAlignment_2" XmlElement="Buttons" Name="HorizontalAlignment" Flags="0" Order="0" Value="left"/>
     <ROW XmlAttribute="Id" XmlElement="Application" Name="Id" Flags="0" Order="0" Value="treecli.exe"/>
-    <ROW XmlAttribute="Id_1" XmlElement="Application_1" Name="Id" Flags="0" Order="0" Value="treeclilauncher.bat"/>
     <ROW XmlAttribute="IgnorableNamespaces" XmlElement="AppInstallerUX" Name="IgnorableNamespaces" Flags="0" Order="0" Value="ux ux2"/>
     <ROW XmlAttribute="Image" XmlElement="SplashScreen" Name="Image" Flags="0" Order="0" FileId="treecli.exeSplashScreen.scale100.png"/>
-    <ROW XmlAttribute="Image_1" XmlElement="SplashScreen_1" Name="Image" Flags="0" Order="0" FileId="treeclilauncher.batSplashScreen.scale100.png"/>
     <ROW XmlAttribute="IsSecondaryButtonAccent" XmlElement="Buttons" Name="IsSecondaryButtonAccent" Flags="0" Order="0" Value="false"/>
     <ROW XmlAttribute="Language" XmlElement="Resource" Name="Language" Flags="0" Order="0" Value="en-US"/>
     <ROW XmlAttribute="MaxVersionTested" XmlElement="TargetDeviceFamily" Name="MaxVersionTested" Flags="0" Order="0" Value="10.0.22000.0"/>
@@ -230,12 +169,9 @@
     <ROW XmlAttribute="Name_2" XmlElement="TargetDeviceFamily" Name="Name" Flags="0" Order="0" Value="Windows.Desktop"/>
     <ROW XmlAttribute="Name_3" XmlElement="Capability_1" Name="Name" Flags="0" Order="0" Value="broadFileSystemAccess"/>
     <ROW XmlAttribute="Notification" XmlElement="LockScreen" Name="Notification" Flags="0" Order="0" Value="badge"/>
-    <ROW XmlAttribute="Notification_1" XmlElement="LockScreen_1" Name="Notification" Flags="0" Order="0" Value="badge"/>
     <ROW XmlAttribute="Orientation" XmlElement="Buttons" Name="Orientation" Flags="0" Order="0" Value="horizontal"/>
     <ROW XmlAttribute="Preference" XmlElement="Rotation" Name="Preference" Flags="0" Order="0" Value="portrait"/>
     <ROW XmlAttribute="Preference_1" XmlElement="Rotation_1" Name="Preference" Flags="0" Order="0" Value="landscape"/>
-    <ROW XmlAttribute="Preference_2" XmlElement="Rotation_2" Name="Preference" Flags="0" Order="0" Value="portrait"/>
-    <ROW XmlAttribute="Preference_3" XmlElement="Rotation_3" Name="Preference" Flags="0" Order="0" Value="landscape"/>
     <ROW XmlAttribute="PrimaryButtonMode" XmlElement="Buttons" Name="PrimaryButtonMode" Flags="0" Order="0" Value="normal"/>
     <ROW XmlAttribute="ProcessorArchitecture" XmlElement="Identity" Name="ProcessorArchitecture" Flags="0" Order="0" Value="x64"/>
     <ROW XmlAttribute="Publisher" XmlElement="Identity" Name="Publisher" Flags="0" Order="0" Value="CN=87AFADE7-3FB2-497A-A3A6-EC5BCB0AEC41"/>
@@ -243,22 +179,15 @@
     <ROW XmlAttribute="SecondaryButtonMode" XmlElement="Buttons" Name="SecondaryButtonMode" Flags="0" Order="0" Value="normal"/>
     <ROW XmlAttribute="Size" XmlElement="Icon" Name="Size" Flags="0" Order="0" Value="default"/>
     <ROW XmlAttribute="Square150x150Logo" XmlElement="VisualElements" Name="Square150x150Logo" Flags="0" Order="0" FileId="treecli.exeSquare150x150Logo.scale100.png"/>
-    <ROW XmlAttribute="Square150x150Logo_1" XmlElement="VisualElements_1" Name="Square150x150Logo" Flags="0" Order="0" FileId="treeclilauncher.batSquare150x150Logo.scale100.png"/>
     <ROW XmlAttribute="Square310x310Logo" XmlElement="DefaultTile" Name="Square310x310Logo" Flags="0" Order="0" FileId="treecli.exeSquare310x310Logo.scale100.png"/>
-    <ROW XmlAttribute="Square310x310Logo_1" XmlElement="DefaultTile_1" Name="Square310x310Logo" Flags="0" Order="0" FileId="treeclilauncher.batSquare310x310Logo.scale100.png"/>
     <ROW XmlAttribute="Square44x44Logo" XmlElement="VisualElements" Name="Square44x44Logo" Flags="0" Order="0" FileId="treecli.exeSquare44x44Logo.scale100.png"/>
-    <ROW XmlAttribute="Square44x44Logo_1" XmlElement="VisualElements_1" Name="Square44x44Logo" Flags="0" Order="0" FileId="treeclilauncher.batSquare44x44Logo.scale100.png"/>
     <ROW XmlAttribute="Square71x71Logo" XmlElement="DefaultTile" Name="Square71x71Logo" Flags="0" Order="0" FileId="treecli.exeSquare71x71Logo.scale100.png"/>
-    <ROW XmlAttribute="Square71x71Logo_1" XmlElement="DefaultTile_1" Name="Square71x71Logo" Flags="0" Order="0" FileId="treeclilauncher.batSquare71x71Logo.scale100.png"/>
     <ROW XmlAttribute="Subsystem" XmlElement="Application" Name="Subsystem" Flags="0" Order="0" Value="console"/>
     <ROW XmlAttribute="Subsystem_1" XmlElement="AppExecutionAlias" Name="Subsystem" Flags="0" Order="0" Value="console"/>
-    <ROW XmlAttribute="Subsystem_2" XmlElement="Application_1" Name="Subsystem" Flags="0" Order="0" Value="console"/>
     <ROW XmlAttribute="SupportsMultipleInstances" XmlElement="Application" Name="SupportsMultipleInstances" Flags="0" Order="0" Value="true"/>
-    <ROW XmlAttribute="SupportsMultipleInstances_1" XmlElement="Application_1" Name="SupportsMultipleInstances" Flags="0" Order="0" Value="true"/>
     <ROW XmlAttribute="Version" XmlElement="Identity" Name="Version" Flags="0" Order="0" Value="1.1.0.0"/>
     <ROW XmlAttribute="Version_1" XmlElement="AppInstallerUX" Name="Version" Flags="0" Order="0" Value="1.0.0"/>
     <ROW XmlAttribute="Wide310x150Logo" XmlElement="DefaultTile" Name="Wide310x150Logo" Flags="0" Order="0" FileId="treecli.exeWide310x150Logo.scale100.png"/>
-    <ROW XmlAttribute="Wide310x150Logo_1" XmlElement="DefaultTile_1" Name="Wide310x150Logo" Flags="0" Order="0" FileId="treeclilauncher.batWide310x150Logo.scale100.png"/>
     <ROW XmlAttribute="xmlns" XmlElement="AppInstallerUX" Name="xmlns" Flags="0" Order="0" Value="http://schemas.microsoft.com/msix/appinstallerux"/>
     <ROW XmlAttribute="xmlnsux" XmlElement="AppInstallerUX" Name="xmlns:ux" Flags="0" Order="0" Value="http://schemas.microsoft.com/msix/appinstallerux"/>
     <ROW XmlAttribute="xmlnsux2" XmlElement="AppInstallerUX" Name="xmlns:ux2" Flags="0" Order="0" Value="http://schemas.microsoft.com/msix/appinstallerux"/>
@@ -267,8 +196,7 @@
     <ROW XmlElement="AppExecutionAlias" ParentElement="Extension" Name="AppExecutionAlias" Order="1" Flags="0" Type="0"/>
     <ROW XmlElement="AppInformation" ParentElement="AppInstallerUX" Name="AppInformation" Order="4" Flags="0" Type="0"/>
     <ROW XmlElement="AppInstallerUX" Name="AppInstallerUX" Order="0" Flags="0" Type="0"/>
-    <ROW XmlElement="Application" ParentElement="Applications" Name="Application" Order="1" Flags="0" Type="4"/>
-    <ROW XmlElement="Application_1" ParentElement="Applications" Name="Application" Order="0" Flags="0" Type="4"/>
+    <ROW XmlElement="Application" ParentElement="Applications" Name="Application" Order="0" Flags="0" Type="4"/>
     <ROW XmlElement="Applications" ParentElement="Package" Name="Applications" Order="3" Flags="0" Type="3"/>
     <ROW XmlElement="Bundle" Name="Bundle" Order="0" Flags="0" Type="0"/>
     <ROW XmlElement="Buttons" ParentElement="AppInstallerUX" Name="Buttons" Order="2" Flags="0" Type="0"/>
@@ -276,7 +204,6 @@
     <ROW XmlElement="Capability" ParentElement="Capabilities" Name="Capability" Order="0" Flags="0" Type="0"/>
     <ROW XmlElement="Capability_1" ParentElement="Capabilities" Name="Capability" Order="1" Flags="0" Type="0"/>
     <ROW XmlElement="DefaultTile" ParentElement="VisualElements" Name="DefaultTile" Order="2" Flags="0" Type="0"/>
-    <ROW XmlElement="DefaultTile_1" ParentElement="VisualElements_1" Name="DefaultTile" Order="2" Flags="0" Type="0"/>
     <ROW XmlElement="Dependencies" ParentElement="Package" Name="Dependencies" Order="5" Flags="0" Type="0"/>
     <ROW XmlElement="DisplayName" ParentElement="Properties" Name="DisplayName" Order="1" Flags="0" Text="Tree CLI" Type="0"/>
     <ROW XmlElement="ExecutionAlias" ParentElement="AppExecutionAlias" Name="ExecutionAlias" Order="1" Flags="0" Type="0"/>
@@ -285,10 +212,8 @@
     <ROW XmlElement="Icon" ParentElement="AppInstallerUX" Name="Icon" Order="5" Flags="0" Type="0"/>
     <ROW XmlElement="Identity" ParentElement="Package" Name="Identity" Order="0" Flags="0" Type="0"/>
     <ROW XmlElement="InitialRotationPreference" ParentElement="VisualElements" Name="InitialRotationPreference" Order="0" Flags="0" Type="0"/>
-    <ROW XmlElement="InitialRotationPreference_1" ParentElement="VisualElements_1" Name="InitialRotationPreference" Order="1" Flags="0" Type="0"/>
     <ROW XmlElement="LaunchWhenReady" ParentElement="AppInstallerUX" Name="LaunchWhenReady" Order="3" Flags="0" Type="0"/>
     <ROW XmlElement="LockScreen" ParentElement="VisualElements" Name="LockScreen" Order="1" Flags="0" Type="0"/>
-    <ROW XmlElement="LockScreen_1" ParentElement="VisualElements_1" Name="LockScreen" Order="4" Flags="0" Type="0"/>
     <ROW XmlElement="Logo" ParentElement="Properties" Name="Logo" Order="2" Flags="0" FileId="Store50x50Logo.scale100.png" Type="0"/>
     <ROW XmlElement="Package" Name="Package" Order="0" Flags="0" Type="6"/>
     <ROW XmlElement="Properties" ParentElement="Package" Name="Properties" Order="2" Flags="0" Type="0"/>
@@ -298,15 +223,11 @@
     <ROW XmlElement="Resources" ParentElement="Package" Name="Resources" Order="1" Flags="0" Type="0"/>
     <ROW XmlElement="Rotation" ParentElement="InitialRotationPreference" Name="Rotation" Order="0" Flags="0" Type="0"/>
     <ROW XmlElement="Rotation_1" ParentElement="InitialRotationPreference" Name="Rotation" Order="1" Flags="0" Type="0"/>
-    <ROW XmlElement="Rotation_2" ParentElement="InitialRotationPreference_1" Name="Rotation" Order="1" Flags="0" Type="0"/>
-    <ROW XmlElement="Rotation_3" ParentElement="InitialRotationPreference_1" Name="Rotation" Order="2" Flags="0" Type="0"/>
     <ROW XmlElement="SplashScreen" ParentElement="VisualElements" Name="SplashScreen" Order="3" Flags="0" Type="0"/>
-    <ROW XmlElement="SplashScreen_1" ParentElement="VisualElements_1" Name="SplashScreen" Order="3" Flags="0" Type="0"/>
     <ROW XmlElement="SupportedUsers" ParentElement="Properties" Name="SupportedUsers" Order="3" Flags="0" Text="multiple" Type="0"/>
     <ROW XmlElement="TargetDeviceFamily" ParentElement="Dependencies" Name="TargetDeviceFamily" Order="0" Flags="0" Type="28"/>
     <ROW XmlElement="UX" ParentElement="AppInstallerUX" Name="UX" Order="1" Flags="0" Type="0"/>
     <ROW XmlElement="VisualElements" ParentElement="Application" Name="VisualElements" Order="0" Flags="0" Type="0"/>
-    <ROW XmlElement="VisualElements_1" ParentElement="Application_1" Name="VisualElements" Order="1" Flags="0" Type="0"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.GenericXmlFileComponent">
     <ROW XmlFile="AppxBundleManifest.xml" FileName="AppxBundleManifest.xml" RootElement="Bundle" Flags="89" Version="1.0" Encoding="UTF-8" IndentUnits="2"/>
@@ -375,7 +296,6 @@
     <ROW Feature_="Complete" Component_="binary0"/>
     <ROW Feature_="Complete" Component_="RegistryEntries"/>
     <ROW Feature_="AiAppXAssets" Component_="Store50x50Logo.scale100.png"/>
-    <ROW Feature_="Environment" Component_="treeclilauncher.bat"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiIconsComponent">
     <ROW Name="favicon.exe" SourcePath="image-assets\favicon.ico" Index="0"/>
