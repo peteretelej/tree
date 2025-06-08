@@ -1,0 +1,8 @@
+Generated Assets/
+image-assets/
+
+# tree binaries eg releases/tree-v1.1.0-Windows-x64/tree.exe
+releases/
+
+# AdvancedInstaller MSIX files
+*-Build_MSIX_APPX-SetupFiles/
