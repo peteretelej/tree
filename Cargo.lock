@@ -302,7 +302,7 @@ checksum = "809e8dc61f6de73b46c85f4c96486310fe304c434cfa43669d7b40f711150908"
 
 [[package]]
 name = "rust_tree"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "ansi_term",
  "assert_cmd",

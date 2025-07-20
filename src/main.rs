@@ -1,9 +1,11 @@
 use clap::Parser;
 use glob::Pattern;
+use std::io;
 use std::option::Option;
 
 use rust_tree::rust_tree::options::TreeOptions;
 use rust_tree::rust_tree::traversal::list_directory;
+use rust_tree::rust_tree::utils::is_broken_pipe_error;
 
 // Custom function to validate the glob pattern
 fn parse_glob_pattern(s: &str) -> Result<Pattern, String> {
@@ -139,19 +141,19 @@ struct Cli {
     print_permissions: bool,
 }
 
-fn main() {
+fn try_main() -> io::Result<()> {
     let cli = Cli::parse();
 
     let pattern_glob: Option<Pattern> = cli.pattern.map(|pattern| {
         parse_glob_pattern(&pattern).unwrap_or_else(|e| {
-            eprintln!("Error: Invalid pattern: {}", e);
+            eprintln!("Error: Invalid pattern: {e}");
             std::process::exit(1);
         })
     });
 
     let exclude_pattern: Option<Pattern> = cli.exclude.map(|pattern| {
         parse_glob_pattern(&pattern).unwrap_or_else(|e| {
-            eprintln!("Error: Invalid exclude pattern: {}", e);
+            eprintln!("Error: Invalid exclude pattern: {e}");
             std::process::exit(1);
         })
     });
@@ -180,7 +182,20 @@ fn main() {
         print_permissions: cli.print_permissions,
     };
 
-    if let Err(e) = list_directory(&cli.path, &options) {
-        eprintln!("Error: {}", e);
+    list_directory(&cli.path, &options)
+}
+
+fn main() {
+    match try_main() {
+        Ok(()) => {}
+        Err(err) => {
+            if is_broken_pipe_error(&err) {
+                // silently terminate for broken pipe to gracefully handle SIGPIPE
+                std::process::exit(0);
+            } else {
+                eprintln!("Error: {err}");
+                std::process::exit(1);
+            }
+        }
     }
 }

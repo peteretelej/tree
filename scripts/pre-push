@@ -1,0 +1,35 @@
+#!/bin/bash
+set -e
+
+echo "Running pre-push checks..."
+
+# Set environment variables like CI
+export CARGO_TERM_COLOR=always
+export RUSTFLAGS="-D warnings"
+
+echo "→ Running clippy..."
+if ! cargo clippy -- -D warnings -D clippy::uninlined-format-args; then
+    echo ""
+    echo "❌ Clippy failed! To fix issues automatically, run:"
+    echo "   git stash  # Save uncommitted changes first"
+    echo "   cargo clippy --fix -- -D clippy::uninlined-format-args"
+    echo "   git stash pop  # Restore your changes"
+    exit 1
+fi
+
+echo "→ Running cargo fmt..."
+if ! cargo fmt --check; then
+    echo ""
+    echo "❌ Code formatting issues found! To fix them, run:"
+    echo "   cargo fmt"
+    exit 1
+fi
+
+echo "→ Running tests..."
+if ! cargo test --verbose; then
+    echo ""
+    echo "❌ Tests failed! Fix the failing tests and try again."
+    exit 1
+fi
+
+echo "✓ All pre-push checks passed!"

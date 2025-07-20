@@ -55,7 +55,7 @@ pub fn format_permissions_unix(mode: u32, is_dir: bool) -> String {
     perms.push(if mode & 0o002 != 0 { 'w' } else { '-' });
     perms.push(if mode & 0o001 != 0 { 'x' } else { '-' }); // Consider sticky bit later?
 
-    format!("[{}]", perms)
+    format!("[{perms}]")
 }
 
 // Stub for non-Unix platforms
