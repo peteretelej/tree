@@ -1,6 +1,6 @@
 use assert_cmd::Command;
 use clap::Parser;
-use std::error::Error;
+use rust_tree::rust_tree::utils::is_broken_pipe_error;
 use std::fs;
 use std::io::{self, ErrorKind};
 use tempfile::tempdir;
@@ -515,24 +515,6 @@ fn test_permissions_flag() -> Result<(), Box<dyn std::error::Error>> {
     assert!(content.contains("1 directory, 1 file"), "Summary incorrect");
 
     Ok(())
-}
-
-fn is_broken_pipe_error(err: &io::Error) -> bool {
-    if err.kind() == ErrorKind::BrokenPipe {
-        return true;
-    }
-
-    let mut source = err.source();
-    while let Some(err) = source {
-        if let Some(io_err) = err.downcast_ref::<io::Error>() {
-            if io_err.kind() == ErrorKind::BrokenPipe {
-                return true;
-            }
-        }
-        source = err.source();
-    }
-
-    false
 }
 
 #[test]

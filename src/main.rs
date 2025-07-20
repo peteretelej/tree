@@ -1,37 +1,15 @@
 use clap::Parser;
 use glob::Pattern;
-use std::error::Error;
-use std::io::{self, ErrorKind};
+use std::io;
 use std::option::Option;
 
 use rust_tree::rust_tree::options::TreeOptions;
 use rust_tree::rust_tree::traversal::list_directory;
+use rust_tree::rust_tree::utils::is_broken_pipe_error;
 
 // Custom function to validate the glob pattern
 fn parse_glob_pattern(s: &str) -> Result<Pattern, String> {
     Pattern::new(s).map_err(|e| e.to_string())
-}
-
-// check for BrokenPipe error to gracefully handle SIGPIPE
-// Rust ignores sigpipe emitting EPIPE and raises BrokenPipe https://github.com/rust-lang/rust/pull/13158
-// Using this instead of resetting sigpipe signal for cross-platform compatibility
-fn is_broken_pipe_error(err: &io::Error) -> bool {
-    if err.kind() == ErrorKind::BrokenPipe {
-        return true;
-    }
-
-    // check error chain for BrokenPipe in case wrapped
-    let mut source = err.source();
-    while let Some(err) = source {
-        if let Some(io_err) = err.downcast_ref::<io::Error>() {
-            if io_err.kind() == ErrorKind::BrokenPipe {
-                return true;
-            }
-        }
-        source = err.source();
-    }
-
-    false
 }
 
 #[derive(Parser, Debug)]
