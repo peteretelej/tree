@@ -143,6 +143,14 @@ cargo fmt
 
 # Verify formatting
 cargo fmt --check
+# run the pre-push script to ensure code quality
+./scripts/pre-push
+```
+
+Consider copying the `pre-push` script to your git hooks directory:
+
+```bash
+cp scripts/pre-push .git/hooks/pre-push
 ```
 
 #### VS Code Settings
