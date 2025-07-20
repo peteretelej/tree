@@ -411,3 +411,51 @@ fn test_exclude_pattern() {
     assert!(exclude_specific.contains("file2.txt"));
     assert!(exclude_specific.contains("dir1"));
 }
+
+#[test]
+fn test_broken_pipe_handling() {
+    let binary_path = if cfg!(windows) {
+        "target\\debug\\tree.exe"
+    } else {
+        "target/debug/tree"
+    };
+
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(&format!("{} tests/fixtures/basic | head -n 5", binary_path))
+        .output()
+        .expect("Failed to execute shell command");
+
+    assert!(
+        output.status.success(),
+        "tree | head -n 5 should exit with code 0, got: {:?}",
+        output.status.code()
+    );
+
+    let output = Command::new("sh")
+        .arg("-c")
+        .arg(&format!("{} tests/fixtures/basic | head -n 1", binary_path))
+        .output()
+        .expect("Failed to execute shell command");
+
+    assert!(
+        output.status.success(),
+        "tree | head -n 1 should exit with code 0, got: {:?}",
+        output.status.code()
+    );
+
+    let output = Command::new(binary_path)
+        .arg("tests/fixtures/basic")
+        .output()
+        .expect("Failed to execute tree command");
+
+    assert!(
+        output.status.success(),
+        "Normal tree operation should still work, got: {:?}",
+        output.status.code()
+    );
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("basic"));
+    assert!(stdout.contains("file1.txt"));
+}

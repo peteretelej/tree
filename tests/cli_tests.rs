@@ -1,6 +1,8 @@
 use assert_cmd::Command;
 use clap::Parser;
+use std::error::Error;
 use std::fs;
+use std::io::{self, ErrorKind};
 use tempfile::tempdir;
 
 #[derive(Parser)]
@@ -519,4 +521,46 @@ fn test_permissions_flag() -> Result<(), Box<dyn std::error::Error>> {
     assert!(content.contains("1 directory, 1 file"), "Summary incorrect");
 
     Ok(())
+}
+
+fn is_broken_pipe_error(err: &io::Error) -> bool {
+    if err.kind() == ErrorKind::BrokenPipe {
+        return true;
+    }
+
+    let mut source = err.source();
+    while let Some(err) = source {
+        if let Some(io_err) = err.downcast_ref::<io::Error>() {
+            if io_err.kind() == ErrorKind::BrokenPipe {
+                return true;
+            }
+        }
+        source = err.source();
+    }
+
+    false
+}
+
+#[test]
+fn test_is_broken_pipe_error() {
+    let broken_pipe_err = io::Error::new(ErrorKind::BrokenPipe, "pipe is broken");
+    assert!(is_broken_pipe_error(&broken_pipe_err));
+
+    let permission_err = io::Error::new(ErrorKind::PermissionDenied, "permission denied");
+    assert!(!is_broken_pipe_error(&permission_err));
+
+    let not_found_err = io::Error::new(ErrorKind::NotFound, "file not found");
+    assert!(!is_broken_pipe_error(&not_found_err));
+
+    let connection_refused_err = io::Error::new(ErrorKind::ConnectionRefused, "connection refused");
+    assert!(!is_broken_pipe_error(&connection_refused_err));
+}
+
+#[test]
+fn test_is_broken_pipe_error_with_source_chain() {
+    let inner_err = io::Error::new(ErrorKind::BrokenPipe, "inner broken pipe");
+    let outer_err = io::Error::new(ErrorKind::Other, format!("wrapper: {}", inner_err));
+
+    assert!(is_broken_pipe_error(&inner_err));
+    assert!(!is_broken_pipe_error(&outer_err));
 }

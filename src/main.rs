@@ -1,5 +1,7 @@
 use clap::Parser;
 use glob::Pattern;
+use std::error::Error;
+use std::io::{self, ErrorKind};
 use std::option::Option;
 
 use rust_tree::rust_tree::options::TreeOptions;
@@ -8,6 +10,28 @@ use rust_tree::rust_tree::traversal::list_directory;
 // Custom function to validate the glob pattern
 fn parse_glob_pattern(s: &str) -> Result<Pattern, String> {
     Pattern::new(s).map_err(|e| e.to_string())
+}
+
+// check for BrokenPipe error to gracefully handle SIGPIPE
+// Rust ignores sigpipe emitting EPIPE and raises BrokenPipe https://github.com/rust-lang/rust/pull/13158
+// Using this instead of resetting sigpipe signal for cross-platform compatibility
+fn is_broken_pipe_error(err: &io::Error) -> bool {
+    if err.kind() == ErrorKind::BrokenPipe {
+        return true;
+    }
+
+    // check error chain for BrokenPipe in case wrapped
+    let mut source = err.source();
+    while let Some(err) = source {
+        if let Some(io_err) = err.downcast_ref::<io::Error>() {
+            if io_err.kind() == ErrorKind::BrokenPipe {
+                return true;
+            }
+        }
+        source = err.source();
+    }
+
+    false
 }
 
 #[derive(Parser, Debug)]
@@ -139,7 +163,7 @@ struct Cli {
     print_permissions: bool,
 }
 
-fn main() {
+fn try_main() -> io::Result<()> {
     let cli = Cli::parse();
 
     let pattern_glob: Option<Pattern> = cli.pattern.map(|pattern| {
@@ -180,7 +204,20 @@ fn main() {
         print_permissions: cli.print_permissions,
     };
 
-    if let Err(e) = list_directory(&cli.path, &options) {
-        eprintln!("Error: {}", e);
+    list_directory(&cli.path, &options)
+}
+
+fn main() {
+    match try_main() {
+        Ok(()) => {}
+        Err(err) => {
+            if is_broken_pipe_error(&err) {
+                // silently terminate for broken pipe to gracefully handle SIGPIPE
+                std::process::exit(0);
+            } else {
+                eprintln!("Error: {}", err);
+                std::process::exit(1);
+            }
+        }
     }
 }
