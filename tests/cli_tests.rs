@@ -181,8 +181,7 @@ fn test_output_to_file() -> Result<(), Box<dyn std::error::Error>> {
     assert!(output_content.contains("dummy.txt"));
     assert!(
         output_content.contains("0 directories, 1 file"),
-        "Summary line '0 directories, 1 file' not found in output: {}\n",
-        output_content
+        "Summary line '0 directories, 1 file' not found in output: {output_content}\n"
     );
 
     // Clean up the output file manually as it's outside the tempdir scope
@@ -214,7 +213,7 @@ fn test_file_limit() -> Result<(), Box<dyn std::error::Error>> {
     let content1 = fs::read_to_string(&output_path1)?;
     fs::remove_file(&output_path1)?; // Clean up
 
-    println!("Content without --filelimit:\n{}", content1); // Debug print
+    println!("Content without --filelimit:\n{content1}"); // Debug print
     assert!(content1.contains("sub_dir"));
     assert!(content1.contains("file1.txt"));
     assert!(content1.contains("file2.txt"));
@@ -223,13 +222,11 @@ fn test_file_limit() -> Result<(), Box<dyn std::error::Error>> {
     // Check summary components separately to avoid newline issues
     assert!(
         content1.contains("1 directory"),
-        "Test 1 Summary Failed (dir count): Content was\n{}",
-        content1
+        "Test 1 Summary Failed (dir count): Content was\n{content1}"
     );
     assert!(
         content1.contains("4 files"),
-        "Test 1 Summary Failed (file count): Content was\n{}",
-        content1
+        "Test 1 Summary Failed (file count): Content was\n{content1}"
     );
 
     // --- Test 2: Run with filelimit = 2 (output to file) ---
@@ -244,7 +241,7 @@ fn test_file_limit() -> Result<(), Box<dyn std::error::Error>> {
     let content2 = fs::read_to_string(&output_path2)?;
     fs::remove_file(&output_path2)?; // Clean up
 
-    println!("Content with --filelimit=2:\n{}", content2); // Debug print
+    println!("Content with --filelimit=2:\n{content2}"); // Debug print
     assert!(content2.contains("sub_dir"));
     assert!(!content2.contains("file1.txt"));
     assert!(!content2.contains("file2.txt"));
@@ -253,13 +250,11 @@ fn test_file_limit() -> Result<(), Box<dyn std::error::Error>> {
     // Check summary components separately
     assert!(
         content2.contains("1 directory"),
-        "Test 2 Summary Failed (dir count): Content was\n{}",
-        content2
+        "Test 2 Summary Failed (dir count): Content was\n{content2}"
     );
     assert!(
         content2.contains("1 file"),
-        "Test 2 Summary Failed (file count): Content was\n{}",
-        content2
+        "Test 2 Summary Failed (file count): Content was\n{content2}"
     );
 
     Ok(())
@@ -282,7 +277,7 @@ fn test_dirsfirst() -> Result<(), Box<dyn std::error::Error>> {
     let output1 = cmd1.output()?;
     cmd1.assert().success();
     let content1 = String::from_utf8(output1.stdout)?;
-    println!("Content without --dirsfirst:\n{}", content1);
+    println!("Content without --dirsfirst:\n{content1}");
 
     // Default is alphabetical: file_a, file_c, sub_dir_a, sub_dir_b
     let pos_file_a = content1.find("file_a.txt").unwrap_or(usize::MAX);
@@ -300,7 +295,7 @@ fn test_dirsfirst() -> Result<(), Box<dyn std::error::Error>> {
     let output2 = cmd2.output()?;
     cmd2.assert().success();
     let content2 = String::from_utf8(output2.stdout)?;
-    println!("Content with --dirsfirst:\n{}", content2);
+    println!("Content with --dirsfirst:\n{content2}");
 
     // Dirs first (alphabetical within type): sub_dir_a, sub_dir_b, file_a, file_c
     let pos_sub_dir_a_2 = content2.find("sub_dir_a").unwrap_or(usize::MAX);
@@ -320,7 +315,7 @@ fn test_dirsfirst() -> Result<(), Box<dyn std::error::Error>> {
     let output3 = cmd3.output()?;
     cmd3.assert().success();
     let content3 = String::from_utf8(output3.stdout)?;
-    println!("Content with --dirsfirst -r:\n{}", content3);
+    println!("Content with --dirsfirst -r:\n{content3}");
 
     // Dirs first (reverse alphabetical within type): sub_dir_b, sub_dir_a, file_c, file_a
     let pos_sub_dir_b_3 = content3.find("sub_dir_b").unwrap_or(usize::MAX);
@@ -361,7 +356,7 @@ fn test_classify_flag() -> Result<(), Box<dyn std::error::Error>> {
     let output = cmd.output()?;
     cmd.assert().success();
     let content = String::from_utf8(output.stdout)?;
-    println!("Content with -F:\n{}", content);
+    println!("Content with -F:\n{content}");
 
     // Assertions
     assert!(
@@ -418,7 +413,7 @@ fn test_no_report_flag() -> Result<(), Box<dyn std::error::Error>> {
     let output1 = cmd1.output()?;
     cmd1.assert().success();
     let content1 = String::from_utf8(output1.stdout)?;
-    println!("Content with report:\n{}", content1);
+    println!("Content with report:\n{content1}");
 
     assert!(content1.contains("file1.txt"));
     assert!(content1.contains("file2.txt"));
@@ -433,7 +428,7 @@ fn test_no_report_flag() -> Result<(), Box<dyn std::error::Error>> {
     let output2 = cmd2.output()?;
     cmd2.assert().success();
     let content2 = String::from_utf8(output2.stdout)?;
-    println!("Content with --noreport:\n{}", content2);
+    println!("Content with --noreport:\n{content2}");
 
     assert!(content2.contains("file1.txt"));
     assert!(content2.contains("file2.txt"));
@@ -445,8 +440,7 @@ fn test_no_report_flag() -> Result<(), Box<dyn std::error::Error>> {
     let last_line = content2.trim_end().lines().last().unwrap_or("");
     assert!(
         !last_line.contains("directories") && !last_line.contains("files"),
-        "Last line appears to be the summary report: {}",
-        last_line
+        "Last line appears to be the summary report: {last_line}"
     );
 
     Ok(())
@@ -480,7 +474,7 @@ fn test_permissions_flag() -> Result<(), Box<dyn std::error::Error>> {
     let output = cmd.output()?;
     cmd.assert().success();
     let content = String::from_utf8(output.stdout)?;
-    println!("Content with -p:\n{}", content);
+    println!("Content with -p:\n{content}");
 
     // Assertions
     #[cfg(unix)]
@@ -559,7 +553,7 @@ fn test_is_broken_pipe_error() {
 #[test]
 fn test_is_broken_pipe_error_with_source_chain() {
     let inner_err = io::Error::new(ErrorKind::BrokenPipe, "inner broken pipe");
-    let outer_err = io::Error::new(ErrorKind::Other, format!("wrapper: {}", inner_err));
+    let outer_err = io::Error::other(format!("wrapper: {inner_err}"));
 
     assert!(is_broken_pipe_error(&inner_err));
     assert!(!is_broken_pipe_error(&outer_err));

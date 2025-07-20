@@ -219,7 +219,7 @@ fn format_entry_line(
         let size_str = if options.human_readable {
             format!(" [{}]", bytes_to_human_readable(size))
         } else {
-            format!(" [{:5}B]", size)
+            format!(" [{size:5}B]")
         };
         line.push_str(&size_str);
     }
@@ -287,7 +287,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
             })
             .collect(),
         Err(e) => {
-            eprintln!("Error reading directory {:?}: {}", current_path, e);
+            eprintln!("Error reading directory {current_path:?}: {e}");
             return Ok(());
         }
     };
@@ -359,7 +359,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
 
         // Format and print the line for the current entry
         let line = format_entry_line(&entry, options, indent_state, is_entry_last)?;
-        writeln!(writer, "{}", line)?;
+        writeln!(writer, "{line}")?;
 
         // Update stats and decide recursion based on entry type
         if entry.file_type()?.is_dir() {
@@ -394,8 +394,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                         Err(e) => {
                             // If we can't read the directory to check the limit, log warning but don't skip.
                             eprintln!(
-                                "Warning: Could not read directory {:?} to check filelimit: {}",
-                                path, e
+                                "Warning: Could not read directory {path:?} to check filelimit: {e}"
                             );
                         }
                     }
@@ -452,7 +451,7 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
             .to_string()
     };
     //println!("{}", display_path);
-    writeln!(writer, "{}", display_path)?; // Use the writer
+    writeln!(writer, "{display_path}")?; // Use the writer
 
     let mut stats = (0, 0); // (directories, files)
 

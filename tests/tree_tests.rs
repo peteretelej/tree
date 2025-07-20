@@ -16,7 +16,7 @@ fn run_cmd(arg: &[&str]) -> String {
 
     // Print stderr for debugging purposes, especially if the command failed
     if !output_result.stderr.is_empty() {
-        eprintln!("--- Captured STDERR for {:?} ---", arg);
+        eprintln!("--- Captured STDERR for {arg:?} ---");
         eprintln!("{}", String::from_utf8_lossy(&output_result.stderr));
         eprintln!("--------------------------------------");
     }
@@ -59,8 +59,8 @@ fn create_empty_dir_fixture() -> String {
     create_dir_all(&base).unwrap();
 
     // Create empty directory structure
-    create_dir_all(format!("{}/empty1/empty1_1", base)).unwrap();
-    create_dir_all(format!("{}/empty2", base)).unwrap();
+    create_dir_all(format!("{base}/empty1/empty1_1")).unwrap();
+    create_dir_all(format!("{base}/empty2")).unwrap();
 
     base
 }
@@ -76,15 +76,14 @@ fn assert_contains_path(haystack: &str, needle: &str) {
     let contains = haystack.contains(&unix_style) || haystack.contains(&windows_style);
     if !contains {
         eprintln!("--- ASSERTION FAILED ---");
-        eprintln!("Needle (Unix):    {}", unix_style);
-        eprintln!("Needle (Windows): {}", windows_style);
-        eprintln!("Haystack:\n{}", haystack);
+        eprintln!("Needle (Unix):    {unix_style}");
+        eprintln!("Needle (Windows): {windows_style}");
+        eprintln!("Haystack:\n{haystack}");
         eprintln!("-----------------------");
     }
     assert!(
         contains,
-        "Output should contain path '{}' (or Windows equivalent '{}')",
-        unix_style, windows_style
+        "Output should contain path '{unix_style}' (or Windows equivalent '{windows_style}')"
     );
 }
 
@@ -263,8 +262,7 @@ fn test_combined_options() {
     let dir1_path = format!("{}{}dir1", base_path_str, std::path::MAIN_SEPARATOR);
     assert!(
         lines.iter().any(|line| line.ends_with(&dir1_path)),
-        "Output should contain line ending with: {}",
-        dir1_path
+        "Output should contain line ending with: {dir1_path}"
     );
 
     let hidden_file_path = format!(
@@ -277,8 +275,7 @@ fn test_combined_options() {
         lines
             .iter()
             .any(|line| line.contains(&hidden_file_path) && line.contains("6B]")),
-        "Output should contain line with: {} and size",
-        hidden_file_path
+        "Output should contain line with: {hidden_file_path} and size"
     );
 
     let subdir1_path = format!(
@@ -289,8 +286,7 @@ fn test_combined_options() {
     );
     assert!(
         lines.iter().any(|line| line.ends_with(&subdir1_path)),
-        "Output should contain line ending with: {}",
-        subdir1_path
+        "Output should contain line ending with: {subdir1_path}"
     );
 
     let file2_log_path = format!(
@@ -303,8 +299,7 @@ fn test_combined_options() {
         lines
             .iter()
             .any(|line| line.contains(&file2_log_path) && line.contains("8B]")),
-        "Output should contain line with: {} and size",
-        file2_log_path
+        "Output should contain line with: {file2_log_path} and size"
     );
 
     // Check that deeper paths are NOT present
@@ -320,14 +315,10 @@ fn test_combined_options() {
 fn test_size_options() {
     let base = format!("tests/dynamic/size_{}", std::process::id());
     create_dir_all(&base).unwrap();
-    fs::write(format!("{}/sized_file.txt", base), "x".repeat(1024)).unwrap();
-    fs::write(format!("{}/bytes_file.txt", base), "xyz").unwrap();
-    fs::write(
-        format!("{}/megabyte_file.bin", base),
-        vec![0u8; 1024 * 1024],
-    )
-    .unwrap(); // 1 MB file
-    fs::write(format!("{}/zero_byte.txt", base), "").unwrap(); // 0 byte file
+    fs::write(format!("{base}/sized_file.txt"), "x".repeat(1024)).unwrap();
+    fs::write(format!("{base}/bytes_file.txt"), "xyz").unwrap();
+    fs::write(format!("{base}/megabyte_file.bin"), vec![0u8; 1024 * 1024]).unwrap(); // 1 MB file
+    fs::write(format!("{base}/zero_byte.txt"), "").unwrap(); // 0 byte file
 
     let size = run_cmd(&["-s", &base]);
     // Assertions updated for bracketed format: " [ padding B]"
@@ -422,7 +413,7 @@ fn test_broken_pipe_handling() {
 
     let output = Command::new("sh")
         .arg("-c")
-        .arg(&format!("{} tests/fixtures/basic | head -n 5", binary_path))
+        .arg(format!("{binary_path} tests/fixtures/basic | head -n 5"))
         .output()
         .expect("Failed to execute shell command");
 
@@ -434,7 +425,7 @@ fn test_broken_pipe_handling() {
 
     let output = Command::new("sh")
         .arg("-c")
-        .arg(&format!("{} tests/fixtures/basic | head -n 1", binary_path))
+        .arg(format!("{binary_path} tests/fixtures/basic | head -n 1"))
         .output()
         .expect("Failed to execute shell command");
 

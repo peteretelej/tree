@@ -168,14 +168,14 @@ fn try_main() -> io::Result<()> {
 
     let pattern_glob: Option<Pattern> = cli.pattern.map(|pattern| {
         parse_glob_pattern(&pattern).unwrap_or_else(|e| {
-            eprintln!("Error: Invalid pattern: {}", e);
+            eprintln!("Error: Invalid pattern: {e}");
             std::process::exit(1);
         })
     });
 
     let exclude_pattern: Option<Pattern> = cli.exclude.map(|pattern| {
         parse_glob_pattern(&pattern).unwrap_or_else(|e| {
-            eprintln!("Error: Invalid exclude pattern: {}", e);
+            eprintln!("Error: Invalid exclude pattern: {e}");
             std::process::exit(1);
         })
     });
@@ -215,7 +215,7 @@ fn main() {
                 // silently terminate for broken pipe to gracefully handle SIGPIPE
                 std::process::exit(0);
             } else {
-                eprintln!("Error: {}", err);
+                eprintln!("Error: {err}");
                 std::process::exit(1);
             }
         }
