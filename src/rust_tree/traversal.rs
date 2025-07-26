@@ -439,7 +439,7 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
 fn list_from_input(input_path: &Path, options: &TreeOptions) -> std::io::Result<()> {
     let lines = read_file_listing(input_path)?;
     let entries = parse_file_listing(lines);
-    let virtual_tree = build_virtual_tree(entries);
+    let virtual_tree = build_virtual_tree(entries, options);
     display_virtual_tree(virtual_tree, options)
 }
 

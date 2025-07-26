@@ -1,3 +1,4 @@
+use crate::rust_tree::options::TreeOptions;
 use std::fs::File;
 use std::io::{self, BufRead, BufReader};
 use std::path::Path;
@@ -215,7 +216,7 @@ fn parse_tar_verbose_line(line: &str) -> Option<FileEntry> {
     };
 
     Some(FileEntry {
-        path: clean_path.to_string(),
+        path: normalize_path(clean_path),
         is_dir,
         size,
     })
@@ -234,7 +235,7 @@ fn parse_tar_simple_line(line: &str) -> Option<FileEntry> {
     }
 
     Some(FileEntry {
-        path: clean_path.to_string(),
+        path: normalize_path(clean_path),
         is_dir,
         size: None,
     })
@@ -244,9 +245,9 @@ pub fn parse_simple_paths(lines: Vec<String>) -> Vec<FileEntry> {
     let mut entries = std::collections::HashMap::new();
 
     for line in lines {
-        let is_dir = line.ends_with('/');
+        let is_dir = line.ends_with('/') || line.ends_with('\\');
         let clean_path = if is_dir {
-            line.trim_end_matches('/')
+            line.trim_end_matches('/').trim_end_matches('\\')
         } else {
             &line
         };
@@ -255,18 +256,21 @@ pub fn parse_simple_paths(lines: Vec<String>) -> Vec<FileEntry> {
             continue;
         }
 
+        // Apply normalization early
+        let normalized_path = normalize_path(clean_path);
+
         // Add the entry itself
         entries.insert(
-            clean_path.to_string(),
+            normalized_path.clone(),
             FileEntry {
-                path: clean_path.to_string(),
+                path: normalized_path.clone(),
                 is_dir,
                 size: None,
             },
         );
 
-        // Add parent directories
-        let path_parts: Vec<&str> = clean_path.split('/').collect();
+        // Add parent directories (now using normalized path)
+        let path_parts: Vec<&str> = normalized_path.split('/').collect();
         for i in 1..path_parts.len() {
             let parent_path = path_parts[..i].join("/");
             if !parent_path.is_empty() {
@@ -362,7 +366,7 @@ fn parse_zip_simple_line(line: &str) -> Option<FileEntry> {
     };
 
     Some(FileEntry {
-        path: clean_path.to_string(),
+        path: normalize_path(clean_path),
         is_dir,
         size,
     })
@@ -387,7 +391,7 @@ fn parse_zip_verbose_line(line: &str) -> Option<FileEntry> {
     };
 
     Some(FileEntry {
-        path: clean_path.to_string(),
+        path: normalize_path(clean_path),
         is_dir,
         size,
     })
@@ -493,7 +497,7 @@ fn parse_7z_line(line: &str) -> Option<FileEntry> {
     };
 
     Some(FileEntry {
-        path: path.to_string(),
+        path: normalize_path(&path),
         is_dir,
         size,
     })
@@ -589,15 +593,28 @@ fn parse_rar_line(line: &str) -> Option<FileEntry> {
     };
 
     Some(FileEntry {
-        path: path.to_string(),
+        path: normalize_path(&path),
         is_dir,
         size,
     })
 }
 
-pub fn build_virtual_tree(entries: Vec<FileEntry>) -> VirtualTree {
+pub fn build_virtual_tree(entries: Vec<FileEntry>, _options: &TreeOptions) -> VirtualTree {
     VirtualTree {
         entries,
         root_name: ".".to_string(),
     }
+}
+
+fn normalize_path(path: &str) -> String {
+    let mut normalized = path.replace('\\', "/");
+
+    // Handle Windows drive letters: C:/ → C/
+    if normalized.len() >= 2 && normalized.chars().nth(1) == Some(':') {
+        let drive = normalized.chars().next().unwrap();
+        // Remove the colon and keep the rest: C:/file.txt → C/file.txt
+        normalized = format!("{}{}", drive, &normalized[2..]);
+    }
+
+    normalized
 }
