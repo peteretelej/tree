@@ -35,6 +35,7 @@ Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tre
 - [x] Append file type indicators (`/`, `*`, etc.) (`-F`)
 - [x] Omit summary report (`--noreport`)
 - [x] Print permissions (`-p`)
+- [x] Read directory listing from a file or stdin (`--fromfile`)
 
 Please feel to open PR requests in case interested in implementing some of the pending features.
 

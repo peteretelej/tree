@@ -22,4 +22,5 @@ pub struct TreeOptions {
     pub classify: bool,
     pub no_report: bool,
     pub print_permissions: bool,
+    pub from_file: bool,
 }
