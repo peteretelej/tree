@@ -6,3 +6,7 @@ target/
 dist/
 
 *.exe
+
+# Coverage reports
+coverage/
+coverage_reports/
