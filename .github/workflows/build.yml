@@ -3,11 +3,6 @@ name: Build and Test
 on:
   push:
     branches: [main]
-    paths:
-      - "**.rs"
-      - "Cargo.toml"
-      - "Cargo.lock"
-      - ".github/workflows/**"
 
 env:
   CARGO_TERM_COLOR: always
@@ -49,6 +44,7 @@ jobs:
         uses: codecov/codecov-action@v3
         with:
           file: coverage/cobertura.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
   cross-platform:
