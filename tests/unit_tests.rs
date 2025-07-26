@@ -175,7 +175,12 @@ fn test_list_directory_errors() {
     let options = create_basic_options();
 
     // Test with non-existent directory - tree actually succeeds but logs errors
-    let result = list_directory("/path/that/does/not/exist/for/sure", &options);
+    let nonexistent_path = if cfg!(windows) {
+        "C:\\nonexistent\\path\\for\\sure"
+    } else {
+        "/path/that/does/not/exist/for/sure"
+    };
+    let result = list_directory(nonexistent_path, &options);
     assert!(result.is_ok()); // Tree continues even with directory read errors
 }
 

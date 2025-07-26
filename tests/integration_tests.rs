@@ -407,15 +407,32 @@ fn test_fromfile_with_flags() {
 #[test]
 fn test_error_handling() {
     // Test with non-existent directory - should succeed but with error in stderr
+    let nonexistent_path = if cfg!(windows) {
+        "C:\\nonexistent\\path"
+    } else {
+        "/nonexistent/path"
+    };
     let output = cmd()
-        .arg("/path/that/does/not/exist")
+        .arg(nonexistent_path)
         .assert()
         .success() // Tree continues even with directory read errors
         .get_output()
         .stderr
         .clone();
 
-    assert!(output_contains(&output, "No such file or directory"));
+    // Check for platform-specific error messages
+    let has_unix_error = output_contains(&output, "No such file or directory");
+    let has_windows_error = output_contains(&output, "cannot find the path")
+        || output_contains(&output, "system cannot find")
+        || output_contains(
+            &output,
+            "The filename, directory name, or volume label syntax is incorrect",
+        );
+    assert!(
+        has_unix_error || has_windows_error,
+        "Expected error message not found in stderr: {}",
+        String::from_utf8_lossy(&output)
+    );
 
     // Test with invalid level
     cmd().args(["-L", "invalid"]).assert().failure();
