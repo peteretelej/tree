@@ -13,7 +13,9 @@ use crate::rust_tree::display::colorize;
 // Conditionally import the permissions formatter only on Unix
 #[cfg(unix)]
 use crate::rust_tree::display::format_permissions_unix;
-use crate::rust_tree::fromfile::{build_virtual_tree, parse_simple_paths, read_file_listing, FileEntry, VirtualTree};
+use crate::rust_tree::fromfile::{
+    build_virtual_tree, parse_file_listing, read_file_listing, FileEntry, VirtualTree,
+};
 use crate::rust_tree::options::TreeOptions;
 use crate::rust_tree::utils::bytes_to_human_readable;
 
@@ -436,7 +438,7 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
 
 fn list_from_input(input_path: &Path, options: &TreeOptions) -> std::io::Result<()> {
     let lines = read_file_listing(input_path)?;
-    let entries = parse_simple_paths(lines);
+    let entries = parse_file_listing(lines);
     let virtual_tree = build_virtual_tree(entries);
     display_virtual_tree(virtual_tree, options)
 }
@@ -523,7 +525,7 @@ fn display_virtual_tree(virtual_tree: VirtualTree, options: &TreeOptions) -> std
 
     for entry in &virtual_tree.entries {
         all_entries.insert(entry.path.clone(), entry);
-        
+
         if entry.path.is_empty() {
             continue;
         }
@@ -534,7 +536,7 @@ fn display_virtual_tree(virtual_tree: VirtualTree, options: &TreeOptions) -> std
             String::new()
         };
 
-        children.entry(parent).or_insert_with(Vec::new).push(entry);
+        children.entry(parent).or_default().push(entry);
     }
 
     // Sort entries in each directory
@@ -569,9 +571,17 @@ fn display_virtual_tree(virtual_tree: VirtualTree, options: &TreeOptions) -> std
 
     // Print summary only if --noreport is not set
     if !options.no_report {
-        let dir_str = if stats.0 == 1 { "directory" } else { "directories" };
+        let dir_str = if stats.0 == 1 {
+            "directory"
+        } else {
+            "directories"
+        };
         let file_str = if stats.1 == 1 { "file" } else { "files" };
-        writeln!(writer, "\n{} {}, {} {}", stats.0, dir_str, stats.1, file_str)?;
+        writeln!(
+            writer,
+            "\n{} {}, {} {}",
+            stats.0, dir_str, stats.1, file_str
+        )?;
     }
 
     writer.flush()?;
@@ -685,14 +695,14 @@ fn display_virtual_entry(
             } else {
                 size.to_string()
             };
-            display_name = format!("[{}]  {}", size_str, display_name);
+            display_name = format!("[{size_str}]  {display_name}");
         }
     }
 
     // Apply colorization (simplified for virtual entries)
     let colored_name = display_name;
 
-    writeln!(writer, "{}{}", prefix, colored_name)?;
+    writeln!(writer, "{prefix}{colored_name}")?;
     Ok(())
 }
 
