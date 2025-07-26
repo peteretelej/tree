@@ -616,5 +616,10 @@ fn normalize_path(path: &str) -> String {
         normalized = format!("{}{}", drive, &normalized[2..]);
     }
 
+    // Strip leading ./ from paths (common in find output)
+    if normalized.starts_with("./") {
+        normalized = normalized[2..].to_string();
+    }
+
     normalized
 }
