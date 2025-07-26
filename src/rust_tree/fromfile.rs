@@ -37,6 +37,7 @@ pub fn parse_file_listing(lines: Vec<String>) -> Vec<FileEntry> {
     if let Some(format) = detect_format(&lines) {
         match format {
             FileListFormat::Tar => parse_tar_listing(lines),
+            FileListFormat::Zip => parse_zip_listing(lines),
             FileListFormat::Simple => parse_simple_paths(lines),
         }
     } else {
@@ -48,11 +49,31 @@ pub fn parse_file_listing(lines: Vec<String>) -> Vec<FileEntry> {
 enum FileListFormat {
     Simple,
     Tar,
+    Zip,
 }
 
 fn detect_format(lines: &[String]) -> Option<FileListFormat> {
     if lines.is_empty() {
         return None;
+    }
+
+    // Check for ZIP format patterns first
+    let zip_patterns = lines
+        .iter()
+        .take(10)
+        .filter(|line| {
+            // unzip -l format: has "Archive:" header or dashed separators
+            line.starts_with("Archive:")
+                || line.starts_with("---------")
+                || (line.contains(" ")
+                    && line.contains(":")
+                    && line.len() > 40
+                    && line.split_whitespace().count() >= 4)
+        })
+        .count();
+
+    if zip_patterns > 0 {
+        return Some(FileListFormat::Zip);
     }
 
     // Check for tar -tvf format patterns (more specific)
@@ -220,6 +241,115 @@ pub fn parse_simple_paths(lines: Vec<String>) -> Vec<FileEntry> {
     }
 
     entries.into_values().collect()
+}
+
+fn parse_zip_listing(lines: Vec<String>) -> Vec<FileEntry> {
+    let mut entries = std::collections::HashMap::new();
+
+    for line in lines {
+        if let Some(entry) = parse_zip_line(&line) {
+            if entry.path.is_empty() {
+                continue;
+            }
+
+            // Add the entry itself
+            entries.insert(entry.path.clone(), entry.clone());
+
+            // Add parent directories
+            let path_parts: Vec<&str> = entry.path.split('/').collect();
+            for i in 1..path_parts.len() {
+                let parent_path = path_parts[..i].join("/");
+                if !parent_path.is_empty() {
+                    entries
+                        .entry(parent_path.clone())
+                        .or_insert_with(|| FileEntry {
+                            path: parent_path,
+                            is_dir: true,
+                            size: None,
+                        });
+                }
+            }
+        }
+    }
+
+    entries.into_values().collect()
+}
+
+fn parse_zip_line(line: &str) -> Option<FileEntry> {
+    let line = line.trim();
+    if line.is_empty()
+        || line.starts_with("Archive:")
+        || line.starts_with("Length")
+        || line.starts_with("---------")
+        || line.ends_with("files")
+        || line.starts_with("Method")
+        || line.starts_with("------")
+    {
+        return None;
+    }
+
+    // Check if this is a verbose format line by looking for specific patterns
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    if parts.len() >= 8 && parts[1] == "Stored" || parts.get(1) == Some(&"Deflated") {
+        // unzip -v format: "       9  Stored        9   0% 2025-07-26 19:41 433ac1df  test_zip/file1.txt"
+        parse_zip_verbose_line(line)
+    } else if parts.len() >= 4 && parts[0].parse::<u64>().is_ok() {
+        // unzip -l format: "        9  2025-07-26 19:41   test_zip/file1.txt"
+        parse_zip_simple_line(line)
+    } else {
+        None
+    }
+}
+
+fn parse_zip_simple_line(line: &str) -> Option<FileEntry> {
+    // unzip -l format: "        9  2025-07-26 19:41   test_zip/file1.txt"
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    if parts.len() < 4 {
+        return None;
+    }
+
+    let size = parts[0].parse::<u64>().ok();
+    // Date and time are at parts[1] and parts[2]
+    // Path starts at parts[3] and may continue if there are spaces
+    let path = parts[3..].join(" ");
+
+    let is_dir = path.ends_with('/');
+    let clean_path = if is_dir {
+        path.trim_end_matches('/')
+    } else {
+        &path
+    };
+
+    Some(FileEntry {
+        path: clean_path.to_string(),
+        is_dir,
+        size,
+    })
+}
+
+fn parse_zip_verbose_line(line: &str) -> Option<FileEntry> {
+    // unzip -v format: "       9  Stored        9   0% 2025-07-26 19:41 433ac1df  test_zip/file1.txt"
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    if parts.len() < 7 {
+        return None;
+    }
+
+    let size = parts[0].parse::<u64>().ok();
+    // Path is the last part
+    let path = parts[parts.len() - 1];
+
+    let is_dir = path.ends_with('/');
+    let clean_path = if is_dir {
+        path.trim_end_matches('/')
+    } else {
+        path
+    };
+
+    Some(FileEntry {
+        path: clean_path.to_string(),
+        is_dir,
+        size,
+    })
 }
 
 pub fn build_virtual_tree(entries: Vec<FileEntry>) -> VirtualTree {
