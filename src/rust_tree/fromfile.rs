@@ -38,6 +38,7 @@ pub fn parse_file_listing(lines: Vec<String>) -> Vec<FileEntry> {
         match format {
             FileListFormat::Tar => parse_tar_listing(lines),
             FileListFormat::Zip => parse_zip_listing(lines),
+            FileListFormat::SevenZip => parse_7z_listing(lines),
             FileListFormat::Simple => parse_simple_paths(lines),
         }
     } else {
@@ -50,6 +51,7 @@ enum FileListFormat {
     Simple,
     Tar,
     Zip,
+    SevenZip,
 }
 
 fn detect_format(lines: &[String]) -> Option<FileListFormat> {
@@ -57,7 +59,25 @@ fn detect_format(lines: &[String]) -> Option<FileListFormat> {
         return None;
     }
 
-    // Check for ZIP format patterns first
+    // Check for 7-Zip format patterns first
+    let sevenz_patterns = lines
+        .iter()
+        .take(10)
+        .filter(|line| {
+            // 7z l format: has "7-Zip" header, "Listing archive:", or specific patterns
+            line.starts_with("7-Zip")
+                || line.starts_with("Listing archive:")
+                || line.starts_with("Path =")
+                || line.starts_with("Type =")
+                || (line.contains("D....") || line.contains("....A"))
+        })
+        .count();
+
+    if sevenz_patterns > 0 {
+        return Some(FileListFormat::SevenZip);
+    }
+
+    // Check for ZIP format patterns
     let zip_patterns = lines
         .iter()
         .take(10)
@@ -347,6 +367,112 @@ fn parse_zip_verbose_line(line: &str) -> Option<FileEntry> {
 
     Some(FileEntry {
         path: clean_path.to_string(),
+        is_dir,
+        size,
+    })
+}
+
+fn parse_7z_listing(lines: Vec<String>) -> Vec<FileEntry> {
+    let mut entries = std::collections::HashMap::new();
+
+    for line in lines {
+        if let Some(entry) = parse_7z_line(&line) {
+            if entry.path.is_empty() {
+                continue;
+            }
+
+            // Add the entry itself
+            entries.insert(entry.path.clone(), entry.clone());
+
+            // Add parent directories
+            let path_parts: Vec<&str> = entry.path.split('/').collect();
+            for i in 1..path_parts.len() {
+                let parent_path = path_parts[..i].join("/");
+                if !parent_path.is_empty() {
+                    entries
+                        .entry(parent_path.clone())
+                        .or_insert_with(|| FileEntry {
+                            path: parent_path,
+                            is_dir: true,
+                            size: None,
+                        });
+                }
+            }
+        }
+    }
+
+    entries.into_values().collect()
+}
+
+fn parse_7z_line(line: &str) -> Option<FileEntry> {
+    let line = line.trim();
+    if line.is_empty()
+        || line.starts_with("7-Zip")
+        || line.starts_with("p7zip")
+        || line.starts_with("Scanning")
+        || line.starts_with("Creating")
+        || line.starts_with("Items to")
+        || line.starts_with("Files read")
+        || line.starts_with("Archive size")
+        || line.starts_with("Everything")
+        || line.starts_with("Listing archive:")
+        || line.starts_with("--")
+        || line.starts_with("Path =")
+        || line.starts_with("Type =")
+        || line.starts_with("Physical Size")
+        || line.starts_with("Headers Size")
+        || line.starts_with("Method =")
+        || line.starts_with("Solid =")
+        || line.starts_with("Blocks =")
+        || line.starts_with("Date")
+        || line.starts_with("---")
+        || line.contains("files,")
+        || line.contains("bytes (")
+        || line.contains("file,")
+    {
+        return None;
+    }
+
+    // 7z format: "2025-07-26 19:58:52 D....            0            0  test_7z"
+    // or:        "2025-07-26 19:58:52 ....A            9               test_7z/file1.txt"
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    if parts.len() < 5 {
+        return None;
+    }
+
+    // Check if this looks like a valid 7z entry (starts with date)
+    if !parts[0].contains('-') || !parts[1].contains(':') {
+        return None;
+    }
+
+    // Skip summary lines (no attr field)
+    if parts.len() >= 3 && !parts[2].contains('.') {
+        return None;
+    }
+
+    // Date: parts[0], Time: parts[1], Attr: parts[2], Size: parts[3], Compressed: parts[4] (optional), Name: parts[5..] or parts[4..]
+    let attr = parts[2];
+    let is_dir = attr.starts_with('D');
+
+    let size = if !is_dir && parts.len() > 3 {
+        parts[3].parse::<u64>().ok()
+    } else {
+        None
+    };
+
+    // Path is from the last field(s) - handle both formats
+    let path = if parts.len() >= 6 {
+        // Format: date time attr size compressed name
+        parts[5..].join(" ")
+    } else if parts.len() >= 5 {
+        // Format: date time attr size name (no compressed size)
+        parts[4..].join(" ")
+    } else {
+        return None;
+    };
+
+    Some(FileEntry {
+        path: path.to_string(),
         is_dir,
         size,
     })
