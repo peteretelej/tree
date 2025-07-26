@@ -39,6 +39,7 @@ pub fn parse_file_listing(lines: Vec<String>) -> Vec<FileEntry> {
             FileListFormat::Tar => parse_tar_listing(lines),
             FileListFormat::Zip => parse_zip_listing(lines),
             FileListFormat::SevenZip => parse_7z_listing(lines),
+            FileListFormat::Rar => parse_rar_listing(lines),
             FileListFormat::Simple => parse_simple_paths(lines),
         }
     } else {
@@ -52,6 +53,7 @@ enum FileListFormat {
     Tar,
     Zip,
     SevenZip,
+    Rar,
 }
 
 fn detect_format(lines: &[String]) -> Option<FileListFormat> {
@@ -59,7 +61,26 @@ fn detect_format(lines: &[String]) -> Option<FileListFormat> {
         return None;
     }
 
-    // Check for 7-Zip format patterns first
+    // Check for RAR format patterns first
+    let rar_patterns = lines
+        .iter()
+        .take(10)
+        .filter(|line| {
+            // rar l/v format: has "RAR" header, "Archive:", "Details: RAR", or attribute patterns
+            line.starts_with("RAR ")
+                || line.starts_with("Archive:")
+                || line.starts_with("Details: RAR")
+                || line.contains("Attributes")
+                || (line.starts_with(" -") && line.contains("--") && line.len() > 40)
+                || (line.starts_with(" d") && line.contains("--") && line.len() > 40)
+        })
+        .count();
+
+    if rar_patterns > 0 {
+        return Some(FileListFormat::Rar);
+    }
+
+    // Check for 7-Zip format patterns
     let sevenz_patterns = lines
         .iter()
         .take(10)
@@ -466,6 +487,102 @@ fn parse_7z_line(line: &str) -> Option<FileEntry> {
         parts[5..].join(" ")
     } else if parts.len() >= 5 {
         // Format: date time attr size name (no compressed size)
+        parts[4..].join(" ")
+    } else {
+        return None;
+    };
+
+    Some(FileEntry {
+        path: path.to_string(),
+        is_dir,
+        size,
+    })
+}
+
+fn parse_rar_listing(lines: Vec<String>) -> Vec<FileEntry> {
+    let mut entries = std::collections::HashMap::new();
+
+    for line in lines {
+        if let Some(entry) = parse_rar_line(&line) {
+            if entry.path.is_empty() {
+                continue;
+            }
+
+            // Add the entry itself
+            entries.insert(entry.path.clone(), entry.clone());
+
+            // Add parent directories
+            let path_parts: Vec<&str> = entry.path.split('/').collect();
+            for i in 1..path_parts.len() {
+                let parent_path = path_parts[..i].join("/");
+                if !parent_path.is_empty() {
+                    entries
+                        .entry(parent_path.clone())
+                        .or_insert_with(|| FileEntry {
+                            path: parent_path,
+                            is_dir: true,
+                            size: None,
+                        });
+                }
+            }
+        }
+    }
+
+    entries.into_values().collect()
+}
+
+fn parse_rar_line(line: &str) -> Option<FileEntry> {
+    let line = line.trim();
+    if line.is_empty()
+        || line.starts_with("RAR ")
+        || line.starts_with("Trial version")
+        || line.starts_with("Evaluation copy")
+        || line.starts_with("Archive:")
+        || line.starts_with("Details:")
+        || line.starts_with("Attributes")
+        || line.starts_with("-----------")
+        || line.starts_with("Creating")
+        || line.starts_with("Adding")
+        || line.starts_with("Done")
+        || line
+            .chars()
+            .all(|c| c.is_whitespace() || c.is_ascii_digit())
+        || (line.len() < 30
+            && line
+                .chars()
+                .all(|c| c.is_whitespace() || c.is_ascii_digit() || c == '%'))
+    {
+        return None;
+    }
+
+    // RAR format: " -rw-rw-r--         9  2025-07-26 21:18  test_rar/file1.txt"
+    // RAR verbose: " -rw-rw-r--         9         9 100%  2025-07-26 21:18  3E4D359A  test_rar/file1.txt"
+    let parts: Vec<&str> = line.split_whitespace().collect();
+    if parts.len() < 5 {
+        return None;
+    }
+
+    // First field should be attributes/permissions
+    let attr = parts[0];
+    if !attr.starts_with('-') && !attr.starts_with('d') && !attr.starts_with('l') {
+        return None;
+    }
+
+    let is_dir = attr.starts_with('d');
+
+    // Size is the second field
+    let size = if !is_dir && parts.len() > 1 {
+        parts[1].parse::<u64>().ok()
+    } else {
+        None
+    };
+
+    // Determine if this is verbose format (has packed size and ratio)
+    let path = if parts.len() >= 8 && parts[3].ends_with('%') {
+        // Verbose format: attr size packed ratio date time checksum name
+        parts[7..].join(" ")
+    } else if parts.len() >= 5 {
+        // Simple format: attr size date time name
         parts[4..].join(" ")
     } else {
         return None;
