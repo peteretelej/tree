@@ -13,6 +13,7 @@ use crate::rust_tree::display::colorize;
 // Conditionally import the permissions formatter only on Unix
 #[cfg(unix)]
 use crate::rust_tree::display::format_permissions_unix;
+use crate::rust_tree::fromfile::{build_virtual_tree, parse_simple_paths, read_file_listing, FileEntry, VirtualTree};
 use crate::rust_tree::options::TreeOptions;
 use crate::rust_tree::utils::bytes_to_human_readable;
 
@@ -426,8 +427,21 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
 }
 
 pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io::Result<()> {
-    let current_path = path.as_ref();
+    if options.from_file {
+        list_from_input(path.as_ref(), options)
+    } else {
+        list_from_filesystem(path.as_ref(), options)
+    }
+}
 
+fn list_from_input(input_path: &Path, options: &TreeOptions) -> std::io::Result<()> {
+    let lines = read_file_listing(input_path)?;
+    let entries = parse_simple_paths(lines);
+    let virtual_tree = build_virtual_tree(entries);
+    display_virtual_tree(virtual_tree, options)
+}
+
+fn list_from_filesystem(current_path: &Path, options: &TreeOptions) -> std::io::Result<()> {
     // Determine output writer: file or stdout
     let mut writer: Box<dyn Write> = match &options.output_file {
         Some(filename) => {
@@ -450,8 +464,7 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
             .unwrap_or(".")
             .to_string()
     };
-    //println!("{}", display_path);
-    writeln!(writer, "{display_path}")?; // Use the writer
+    writeln!(writer, "{display_path}")?;
 
     let mut stats = (0, 0); // (directories, files)
 
@@ -484,4 +497,236 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
 
     writer.flush()?; // Explicitly flush the buffer
     Ok(())
+}
+
+fn display_virtual_tree(virtual_tree: VirtualTree, options: &TreeOptions) -> std::io::Result<()> {
+    use std::collections::HashMap;
+
+    // Determine output writer: file or stdout
+    let mut writer: Box<dyn Write> = match &options.output_file {
+        Some(filename) => {
+            let file = OpenOptions::new()
+                .write(true)
+                .create(true)
+                .truncate(true)
+                .open(filename)?;
+            Box::new(BufWriter::new(file))
+        }
+        None => Box::new(BufWriter::new(io::stdout())),
+    };
+
+    writeln!(writer, "{}", virtual_tree.root_name)?;
+
+    // Build hierarchy
+    let mut children: HashMap<String, Vec<&FileEntry>> = HashMap::new();
+    let mut all_entries: HashMap<String, &FileEntry> = HashMap::new();
+
+    for entry in &virtual_tree.entries {
+        all_entries.insert(entry.path.clone(), entry);
+        
+        if entry.path.is_empty() {
+            continue;
+        }
+
+        let parent = if let Some(pos) = entry.path.rfind('/') {
+            entry.path[..pos].to_string()
+        } else {
+            String::new()
+        };
+
+        children.entry(parent).or_insert_with(Vec::new).push(entry);
+    }
+
+    // Sort entries in each directory
+    for child_list in children.values_mut() {
+        child_list.sort_by(|a, b| {
+            if options.dirs_first {
+                match (a.is_dir, b.is_dir) {
+                    (true, false) => std::cmp::Ordering::Less,
+                    (false, true) => std::cmp::Ordering::Greater,
+                    _ => a.path.cmp(&b.path),
+                }
+            } else {
+                a.path.cmp(&b.path)
+            }
+        });
+    }
+
+    let mut stats = (0, 0); // (directories, files)
+
+    // Display tree starting from root
+    if let Some(root_children) = children.get("") {
+        display_virtual_entries(
+            &mut writer,
+            root_children,
+            &children,
+            options,
+            &mut stats,
+            &[],
+            0,
+        )?;
+    }
+
+    // Print summary only if --noreport is not set
+    if !options.no_report {
+        let dir_str = if stats.0 == 1 { "directory" } else { "directories" };
+        let file_str = if stats.1 == 1 { "file" } else { "files" };
+        writeln!(writer, "\n{} {}, {} {}", stats.0, dir_str, stats.1, file_str)?;
+    }
+
+    writer.flush()?;
+    Ok(())
+}
+
+fn display_virtual_entries(
+    writer: &mut Box<dyn Write>,
+    entries: &[&FileEntry],
+    all_children: &std::collections::HashMap<String, Vec<&FileEntry>>,
+    options: &TreeOptions,
+    stats: &mut (u32, u32),
+    indent_state: &[bool],
+    depth: usize,
+) -> std::io::Result<()> {
+    // Check level limit
+    if let Some(max_level) = options.level {
+        if depth >= max_level as usize {
+            return Ok(());
+        }
+    }
+
+    for (i, entry) in entries.iter().enumerate() {
+        let is_last = i == entries.len() - 1;
+
+        // Apply filters
+        if should_skip_virtual_entry(entry, options)? {
+            continue;
+        }
+
+        // Update stats
+        if entry.is_dir {
+            stats.0 += 1;
+        } else {
+            stats.1 += 1;
+        }
+
+        // Display entry
+        display_virtual_entry(writer, entry, options, indent_state, is_last)?;
+
+        // Recurse into directories
+        if entry.is_dir {
+            if let Some(children) = all_children.get(&entry.path) {
+                let mut new_indent_state = indent_state.to_vec();
+                new_indent_state.push(!is_last);
+                display_virtual_entries(
+                    writer,
+                    children,
+                    all_children,
+                    options,
+                    stats,
+                    &new_indent_state,
+                    depth + 1,
+                )?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn display_virtual_entry(
+    writer: &mut Box<dyn Write>,
+    entry: &FileEntry,
+    options: &TreeOptions,
+    indent_state: &[bool],
+    is_last: bool,
+) -> std::io::Result<()> {
+    // Build prefix
+    let mut prefix = String::new();
+    if !options.no_indent {
+        for &has_sibling in indent_state {
+            if options.ascii {
+                prefix.push_str(if has_sibling { "|   " } else { "    " });
+            } else {
+                prefix.push_str(if has_sibling { "│   " } else { "    " });
+            }
+        }
+
+        if options.ascii {
+            prefix.push_str(if is_last { "`-- " } else { "|-- " });
+        } else {
+            prefix.push_str(if is_last { "└── " } else { "├── " });
+        }
+    }
+
+    // Get filename
+    let filename = if let Some(pos) = entry.path.rfind('/') {
+        &entry.path[pos + 1..]
+    } else {
+        &entry.path
+    };
+
+    // Build display name
+    let mut display_name = if options.full_path {
+        entry.path.clone()
+    } else {
+        filename.to_string()
+    };
+
+    // Add file type indicator
+    if options.classify && entry.is_dir {
+        display_name.push('/');
+    }
+
+    // Add size if requested
+    if options.print_size || options.human_readable {
+        if let Some(size) = entry.size {
+            let size_str = if options.human_readable {
+                bytes_to_human_readable(size)
+            } else {
+                size.to_string()
+            };
+            display_name = format!("[{}]  {}", size_str, display_name);
+        }
+    }
+
+    // Apply colorization (simplified for virtual entries)
+    let colored_name = display_name;
+
+    writeln!(writer, "{}{}", prefix, colored_name)?;
+    Ok(())
+}
+
+fn should_skip_virtual_entry(entry: &FileEntry, options: &TreeOptions) -> std::io::Result<bool> {
+    let filename = if let Some(pos) = entry.path.rfind('/') {
+        &entry.path[pos + 1..]
+    } else {
+        &entry.path
+    };
+
+    // Check if hidden
+    let is_hidden = filename.starts_with('.');
+    if !options.all_files && is_hidden {
+        return Ok(true);
+    }
+
+    // Check exclude pattern
+    if let Some(exclude_pattern) = &options.exclude_pattern {
+        if exclude_pattern.matches(filename) {
+            return Ok(true);
+        }
+    }
+
+    // Check include pattern
+    if let Some(include_pattern) = &options.pattern_glob {
+        if !include_pattern.matches(filename) {
+            return Ok(true);
+        }
+    }
+
+    // Check directories only
+    if options.dir_only && !entry.is_dir {
+        return Ok(true);
+    }
+
+    Ok(false)
 }

@@ -139,6 +139,9 @@ struct Cli {
 
     #[arg(short = 'p', help = "Print the protections for each file (unix only).")]
     print_permissions: bool,
+
+    #[arg(long = "fromfile", help = "Read listing from file/stdin")]
+    fromfile: bool,
 }
 
 fn try_main() -> io::Result<()> {
@@ -180,6 +183,7 @@ fn try_main() -> io::Result<()> {
         classify: cli.classify,
         no_report: cli.no_report,
         print_permissions: cli.print_permissions,
+        from_file: cli.fromfile,
     };
 
     list_directory(&cli.path, &options)
