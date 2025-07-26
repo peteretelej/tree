@@ -3,6 +3,7 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/peteretelej/tree)](https://github.com/peteretelej/tree/releases)
 [![Rust Crate](https://img.shields.io/crates/v/rust_tree.svg)](https://crates.io/crates/rust_tree)
 [![Build and Test](https://github.com/peteretelej/tree/actions/workflows/build.yml/badge.svg)](https://github.com/peteretelej/tree/actions/workflows/build.yml)
+[![codecov](https://codecov.io/gh/peteretelej/tree/graph/badge.svg)](https://codecov.io/gh/peteretelej/tree)
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/peteretelej/tree/blob/main/LICENSE)
 
 `tree` is an open-source `tree` command-line application that recursively displays the directory structure of a given path in a tree-like format, inspired by the Unix `tree` command. It is implemented in Rust and aims to provide a fast and efficient alternative with additional features, especially useful on platforms with no or limited `tree` cli features. Available for most platforms.
