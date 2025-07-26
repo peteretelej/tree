@@ -64,6 +64,18 @@ jobs:
       - name: Run tests
         run: cargo test --verbose
 
+      - name: Install tarpaulin
+        run: cargo install cargo-tarpaulin
+
+      - name: Generate coverage report
+        run: cargo tarpaulin --out xml --output-dir coverage/
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          file: coverage/cobertura.xml
+          fail_ci_if_error: false
+
   cross-platform:
     name: Test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
