@@ -141,7 +141,7 @@ fn detect_format(lines: &[String]) -> Option<FileListFormat> {
     }
 }
 
-fn parse_tar_listing(lines: Vec<String>) -> Vec<FileEntry> {
+pub fn parse_tar_listing(lines: Vec<String>) -> Vec<FileEntry> {
     let mut entries = std::collections::HashMap::new();
 
     for line in lines {
@@ -173,7 +173,7 @@ fn parse_tar_listing(lines: Vec<String>) -> Vec<FileEntry> {
     entries.into_values().collect()
 }
 
-fn parse_tar_line(line: &str) -> Option<FileEntry> {
+pub fn parse_tar_line(line: &str) -> Option<FileEntry> {
     let line = line.trim();
     if line.is_empty() {
         return None;
@@ -189,7 +189,7 @@ fn parse_tar_line(line: &str) -> Option<FileEntry> {
     }
 }
 
-fn parse_tar_verbose_line(line: &str) -> Option<FileEntry> {
+pub fn parse_tar_verbose_line(line: &str) -> Option<FileEntry> {
     let parts: Vec<&str> = line.split_whitespace().collect();
     if parts.len() < 6 {
         return None;
@@ -222,7 +222,7 @@ fn parse_tar_verbose_line(line: &str) -> Option<FileEntry> {
     })
 }
 
-fn parse_tar_simple_line(line: &str) -> Option<FileEntry> {
+pub fn parse_tar_simple_line(line: &str) -> Option<FileEntry> {
     let is_dir = line.ends_with('/');
     let clean_path = if is_dir {
         line.trim_end_matches('/')
@@ -288,7 +288,7 @@ pub fn parse_simple_paths(lines: Vec<String>) -> Vec<FileEntry> {
     entries.into_values().collect()
 }
 
-fn parse_zip_listing(lines: Vec<String>) -> Vec<FileEntry> {
+pub fn parse_zip_listing(lines: Vec<String>) -> Vec<FileEntry> {
     let mut entries = std::collections::HashMap::new();
 
     for line in lines {
@@ -346,7 +346,7 @@ fn parse_zip_line(line: &str) -> Option<FileEntry> {
     }
 }
 
-fn parse_zip_simple_line(line: &str) -> Option<FileEntry> {
+pub fn parse_zip_simple_line(line: &str) -> Option<FileEntry> {
     // unzip -l format: "        9  2025-07-26 19:41   test_zip/file1.txt"
     let parts: Vec<&str> = line.split_whitespace().collect();
     if parts.len() < 4 {
@@ -372,7 +372,7 @@ fn parse_zip_simple_line(line: &str) -> Option<FileEntry> {
     })
 }
 
-fn parse_zip_verbose_line(line: &str) -> Option<FileEntry> {
+pub fn parse_zip_verbose_line(line: &str) -> Option<FileEntry> {
     // unzip -v format: "       9  Stored        9   0% 2025-07-26 19:41 433ac1df  test_zip/file1.txt"
     let parts: Vec<&str> = line.split_whitespace().collect();
     if parts.len() < 7 {
