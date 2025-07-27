@@ -105,7 +105,7 @@ fn directory_contains_pattern_matches(
     let read_dir_result = fs::read_dir(dir_path);
     let entries = match read_dir_result {
         Ok(reader) => reader.filter_map(Result::ok).collect::<Vec<_>>(),
-        Err(_) => return Ok(true), // If we can't read the directory, include it to show error message
+        Err(_) => return Ok(false), // If we can't read the directory, assume it doesn't contain pattern matches
     };
 
     for entry in entries {
