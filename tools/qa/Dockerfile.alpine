@@ -1,0 +1,24 @@
+FROM alpine:3.19
+
+ENV RUST_VERSION=stable
+
+# Install system dependencies
+RUN apk add --no-cache \
+    curl \
+    build-base \
+    git \
+    ca-certificates \
+    musl-dev \
+    bash
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain ${RUST_VERSION}
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Set working directory
+WORKDIR /app
+
+# Copy project files
+COPY . .
+
+# The QA tool will run its own build and test commands

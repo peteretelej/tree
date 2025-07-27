@@ -1,14 +1,16 @@
 use anyhow::{anyhow, Result};
-use bollard::container::{Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions};
+use bollard::container::{
+    Config, CreateContainerOptions, RemoveContainerOptions, StartContainerOptions,
+};
 use bollard::image::BuildImageOptions;
 use bollard::Docker;
 use colored::*;
+use futures::StreamExt;
 use std::path::Path;
 use tracing::{info, warn};
-use futures::StreamExt;
 
-use crate::tests::{TestCase, get_all_tests, group_tests_by_category};
 use crate::executor::TestExecutor;
+use crate::tests::{get_all_tests, group_tests_by_category, TestCase};
 
 pub struct DockerManager {
     docker: Docker,
@@ -17,7 +19,7 @@ pub struct DockerManager {
 impl DockerManager {
     pub async fn new() -> Result<Self> {
         let docker = Docker::connect_with_local_defaults()?;
-        
+
         // Test connection
         match docker.ping().await {
             Ok(_) => info!("Connected to Docker daemon"),
@@ -28,15 +30,22 @@ impl DockerManager {
     }
 
     pub async fn build_image(&self, platform: &str, project_root: &Path) -> Result<String> {
-        let image_name = format!("tree-qa:{}", platform);
-        let dockerfile_path = format!("tests/qa/Dockerfile.{}", platform);
-        
-        println!("  {} Building Docker image: {}", "🔨".yellow(), image_name.bright_white());
-        
+        let image_name = format!("tree-qa:{platform}");
+        let dockerfile_path = format!("tools/qa/Dockerfile.{platform}");
+
+        println!(
+            "  {} Building Docker image: {}",
+            "🔨".yellow(),
+            image_name.bright_white()
+        );
+
         // Check if Dockerfile exists
         let dockerfile_full_path = project_root.join(&dockerfile_path);
         if !dockerfile_full_path.exists() {
-            return Err(anyhow!("Dockerfile not found: {}", dockerfile_full_path.display()));
+            return Err(anyhow!(
+                "Dockerfile not found: {}",
+                dockerfile_full_path.display()
+            ));
         }
 
         // Build options
@@ -50,10 +59,12 @@ impl DockerManager {
 
         // Create build context (tar stream)
         let tar = tar_directory(project_root)?;
-        
+
         // Build image
-        let mut stream = self.docker.build_image(build_options, None, Some(tar.into()));
-        
+        let mut stream = self
+            .docker
+            .build_image(build_options, None, Some(tar.into()));
+
         while let Some(build_result) = stream.next().await {
             match build_result {
                 Ok(output) => {
@@ -76,7 +87,7 @@ impl DockerManager {
 
     pub async fn run_tests(&self, image_name: &str, platform: &str) -> Result<TestResults> {
         let container_name = format!("tree-qa-{}-{}", platform, chrono::Utc::now().timestamp());
-        
+
         println!("  {} Creating container: {}", "🐳".blue(), container_name);
 
         // Create the test script in the container
@@ -100,20 +111,27 @@ impl DockerManager {
             platform: None,
         };
 
-        self.docker.create_container(Some(create_options), config).await?;
+        self.docker
+            .create_container(Some(create_options), config)
+            .await?;
 
         println!("  {} Running tests in container", "🧪".cyan());
 
-        // Start container 
-        self.docker.start_container(&container_name, None::<StartContainerOptions<String>>).await?;
+        // Start container
+        self.docker
+            .start_container(&container_name, None::<StartContainerOptions<String>>)
+            .await?;
 
         // Wait for container to finish and get logs
         let mut wait_stream = self.docker.wait_container::<String>(&container_name, None);
-        let wait_result = wait_stream.next().await
-            .unwrap_or(Ok(bollard::models::ContainerWaitResponse { 
-                status_code: 1, 
-                error: None 
-            }))?;
+        let wait_result =
+            wait_stream
+                .next()
+                .await
+                .unwrap_or(Ok(bollard::models::ContainerWaitResponse {
+                    status_code: 1,
+                    error: None,
+                }))?;
         let exit_code = wait_result.status_code;
 
         // Get container logs
@@ -122,10 +140,10 @@ impl DockerManager {
             stderr: true,
             ..Default::default()
         };
-        
+
         let mut log_stream = self.docker.logs(&container_name, Some(log_options));
         let mut output = String::new();
-        
+
         while let Some(log_result) = log_stream.next().await {
             match log_result {
                 Ok(log_output) => {
@@ -140,15 +158,19 @@ impl DockerManager {
             force: true,
             ..Default::default()
         };
-        
-        if let Err(e) = self.docker.remove_container(&container_name, Some(remove_options)).await {
+
+        if let Err(e) = self
+            .docker
+            .remove_container(&container_name, Some(remove_options))
+            .await
+        {
             warn!("Failed to remove container {}: {}", container_name, e);
         }
 
         // Execute tests using the new test executor
         let executor = TestExecutor::new(platform.to_string());
         let summary = executor.execute_all_tests(&output).await?;
-        
+
         // Convert summary to TestResults for compatibility
         let results = TestResults {
             platform: platform.to_string(),
@@ -158,16 +180,16 @@ impl DockerManager {
             success: summary.failed_tests == 0,
             output: output.clone(),
         };
-        
+
         // Print summary
         executor.print_summary(&summary);
-        
+
         Ok(results)
     }
 
     pub async fn cleanup_resources(&self) -> Result<()> {
         println!("  {} Removing tree-qa containers", "🗑️".red());
-        
+
         // List and remove containers
         let containers = self.docker.list_containers::<String>(None).await?;
         for container in containers {
@@ -179,7 +201,11 @@ impl DockerManager {
                             force: true,
                             ..Default::default()
                         };
-                        if let Err(e) = self.docker.remove_container(&name.trim_start_matches('/'), Some(remove_options)).await {
+                        if let Err(e) = self
+                            .docker
+                            .remove_container(&name.trim_start_matches('/'), Some(remove_options))
+                            .await
+                        {
                             warn!("Failed to remove container {}: {}", name, e);
                         }
                     }
@@ -188,7 +214,7 @@ impl DockerManager {
         }
 
         println!("  {} Removing tree-qa images", "🗑️".red());
-        
+
         // List and remove images
         let images = self.docker.list_images::<String>(None).await?;
         for image in images {
@@ -229,12 +255,12 @@ fn tar_directory(path: &Path) -> Result<Vec<u8>> {
 fn create_unix_test_script() -> Result<String> {
     let setup_script = crate::environment::setup_test_environment()?;
     let tests = get_all_tests();
-    
+
     let mut script = setup_script;
     script.push_str("\n\n# Execute all tests\n");
     script.push_str("cd /tmp/qa_test\n");
     script.push_str("TREE_BINARY=\"/app/target/release/tree\"\n\n");
-    
+
     // Add test execution functions
     script.push_str(r#"
 log_test() {
@@ -309,18 +335,16 @@ run_test() {
     for test in tests {
         let should_fail = if test.should_fail { "true" } else { "false" };
         let expected_pattern = test.expected_pattern.unwrap_or_default();
-        
+
         script.push_str(&format!(
             "run_test \"{}\" \"{}\" \"{}\" \"{}\"\n",
-            test.name,
-            test.command,
-            expected_pattern,
-            should_fail
+            test.name, test.command, expected_pattern, should_fail
         ));
     }
 
     // Add special handling for output file test
-    script.push_str(r#"
+    script.push_str(
+        r#"
 # Special handling for output file test
 OUTPUT_FILE="/tmp/test_output.txt"
 if [ -f "$OUTPUT_FILE" ]; then
@@ -335,8 +359,9 @@ else
 fi
 
 log "All tests completed"
-"#);
-    
+"#,
+    );
+
     Ok(script)
 }
 

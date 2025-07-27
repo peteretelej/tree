@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tracing::{info, warn};
 
-use crate::tests::{TestCase, TestCategory, group_tests_by_category};
+use crate::tests::{group_tests_by_category, TestCase, TestCategory};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestResult {
@@ -69,18 +69,18 @@ impl TestExecutor {
         for category in category_order {
             if let Some(category_tests) = grouped_tests.get(&category) {
                 println!("    {} {}", "📁".blue(), category.as_str().bright_white());
-                
+
                 for test in category_tests {
                     let result = self.execute_single_test(test, container_output).await?;
                     let status_icon = if result.passed { "✅" } else { "❌" };
                     println!("      {} {}", status_icon, result.name);
-                    
+
                     if !result.passed {
                         if let Some(error) = &result.error_message {
                             println!("        {} {}", "⚠️".yellow(), error);
                         }
                     }
-                    
+
                     results.push(result);
                 }
             }
@@ -88,18 +88,22 @@ impl TestExecutor {
 
         let execution_time = start_time.elapsed().as_millis() as u64;
         let summary = self.generate_summary(results, execution_time);
-        
+
         Ok(summary)
     }
 
-    async fn execute_single_test(&self, test: &TestCase, container_output: &str) -> Result<TestResult> {
+    async fn execute_single_test(
+        &self,
+        test: &TestCase,
+        container_output: &str,
+    ) -> Result<TestResult> {
         let start_time = std::time::Instant::now();
-        
+
         // Parse the container output to find this test's execution
         let result = self.parse_test_result_from_output(test, container_output);
-        
+
         let execution_time = start_time.elapsed().as_millis() as u64;
-        
+
         Ok(TestResult {
             name: test.name.clone(),
             category: test.category.clone(),
@@ -112,7 +116,11 @@ impl TestExecutor {
         })
     }
 
-    fn parse_test_result_from_output(&self, test: &TestCase, output: &str) -> (bool, Option<i32>, String, Option<String>) {
+    fn parse_test_result_from_output(
+        &self,
+        test: &TestCase,
+        output: &str,
+    ) -> (bool, Option<i32>, String, Option<String>) {
         // Look for test execution in container output
         let mut found_test = false;
         let mut test_output = String::new();
@@ -125,12 +133,12 @@ impl TestExecutor {
             // Look for the test start marker
             if line.contains(&format!("TEST: {}", test.name)) {
                 found_test = true;
-                
+
                 // Collect subsequent lines until we find the result
-                for j in (i+1)..lines.len() {
+                for j in (i + 1)..lines.len() {
                     test_output.push_str(lines[j]);
                     test_output.push('\n');
-                    
+
                     if lines[j].contains("✓ PASS:") && lines[j].contains(&test.name) {
                         passed = true;
                         break;
@@ -138,7 +146,8 @@ impl TestExecutor {
                         passed = false;
                         // Look for error details
                         if j + 1 < lines.len() && lines[j + 1].contains("Details:") {
-                            error_message = Some(lines[j + 1].trim_start_matches("  Details: ").to_string());
+                            error_message =
+                                Some(lines[j + 1].trim_start_matches("  Details: ").to_string());
                         }
                         break;
                     } else if lines[j].contains("Exit code:") {
@@ -146,7 +155,7 @@ impl TestExecutor {
                             exit_code = code_str.trim().parse().ok();
                         }
                     }
-                    
+
                     // Stop if we hit the next test
                     if lines[j].contains("TEST: ") && !lines[j].contains(&test.name) {
                         break;
@@ -178,12 +187,14 @@ impl TestExecutor {
         let mut results_by_category = HashMap::new();
         for result in &results {
             let category_name = result.category.as_str().to_string();
-            let entry = results_by_category.entry(category_name).or_insert(CategorySummary {
-                total: 0,
-                passed: 0,
-                failed: 0,
-            });
-            
+            let entry = results_by_category
+                .entry(category_name)
+                .or_insert(CategorySummary {
+                    total: 0,
+                    passed: 0,
+                    failed: 0,
+                });
+
             entry.total += 1;
             if result.passed {
                 entry.passed += 1;
@@ -205,14 +216,27 @@ impl TestExecutor {
 
     pub fn print_summary(&self, summary: &TestSummary) {
         println!("\n{}", "=".repeat(50).bright_blue());
-        println!("{} {} Test Summary", "📊".bright_blue(), summary.platform.bright_white().bold());
+        println!(
+            "{} {} Test Summary",
+            "📊".bright_blue(),
+            summary.platform.bright_white().bold()
+        );
         println!("{}", "=".repeat(50).bright_blue());
-        
-        println!("Total tests: {}", summary.total_tests.to_string().bright_white());
+
+        println!(
+            "Total tests: {}",
+            summary.total_tests.to_string().bright_white()
+        );
         println!("Passed: {}", summary.passed_tests.to_string().green());
         println!("Failed: {}", summary.failed_tests.to_string().red());
-        println!("Success rate: {:.1}%", summary.success_rate.to_string().bright_cyan());
-        println!("Execution time: {}ms", summary.execution_time_ms.to_string().bright_yellow());
+        println!(
+            "Success rate: {:.1}%",
+            summary.success_rate.to_string().bright_cyan()
+        );
+        println!(
+            "Execution time: {}ms",
+            summary.execution_time_ms.to_string().bright_yellow()
+        );
 
         if !summary.results_by_category.is_empty() {
             println!("\n{} Category Breakdown:", "📁".bright_blue());
@@ -222,8 +246,9 @@ impl TestExecutor {
                 } else {
                     0.0
                 };
-                
-                println!("  {}: {}/{} ({:.1}%)", 
+
+                println!(
+                    "  {}: {}/{} ({:.1}%)",
                     category.bright_white(),
                     stats.passed.to_string().green(),
                     stats.total,

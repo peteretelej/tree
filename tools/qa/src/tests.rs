@@ -71,7 +71,6 @@ pub fn get_all_tests() -> Vec<TestCase> {
             should_fail: true,
             category: TestCategory::BasicFunctionality,
         },
-
         // Depth and Structure Tests
         TestCase {
             name: "Depth level 1".to_string(),
@@ -108,7 +107,6 @@ pub fn get_all_tests() -> Vec<TestCase> {
             should_fail: false,
             category: TestCategory::DepthAndStructure,
         },
-
         // File Filtering Tests
         TestCase {
             name: "All files (including hidden)".to_string(),
@@ -145,7 +143,6 @@ pub fn get_all_tests() -> Vec<TestCase> {
             should_fail: false,
             category: TestCategory::FileFiltering,
         },
-
         // Display Options Tests
         TestCase {
             name: "Show file sizes".to_string(),
@@ -196,7 +193,6 @@ pub fn get_all_tests() -> Vec<TestCase> {
             should_fail: false,
             category: TestCategory::DisplayOptions,
         },
-
         // Sorting Options Tests
         TestCase {
             name: "Sort by time".to_string(),
@@ -226,8 +222,7 @@ pub fn get_all_tests() -> Vec<TestCase> {
             should_fail: false,
             category: TestCategory::SortingOptions,
         },
-
-        // Output Options Tests  
+        // Output Options Tests
         TestCase {
             name: "Output to file".to_string(),
             command: "/app/target/release/tree -o /tmp/test_output.txt .".to_string(),
@@ -235,7 +230,6 @@ pub fn get_all_tests() -> Vec<TestCase> {
             should_fail: false,
             category: TestCategory::OutputOptions,
         },
-
         // Fromfile Functionality Tests
         TestCase {
             name: "Read from file".to_string(),
@@ -246,12 +240,12 @@ pub fn get_all_tests() -> Vec<TestCase> {
         },
         TestCase {
             name: "Read from stdin".to_string(),
-            command: "echo -e 'test/\\ntest/file.txt' | /app/target/release/tree --fromfile".to_string(),
+            command: "echo -e 'test/\\ntest/file.txt' | /app/target/release/tree --fromfile"
+                .to_string(),
             expected_pattern: Some("test".to_string()),
             should_fail: false,
             category: TestCategory::Fromfilefunctionality,
         },
-
         // Combined Options Tests
         TestCase {
             name: "Multiple flags combination".to_string(),
@@ -274,7 +268,6 @@ pub fn get_all_tests() -> Vec<TestCase> {
             should_fail: false,
             category: TestCategory::CombinedOptions,
         },
-
         // Error Conditions Tests
         TestCase {
             name: "Invalid flag".to_string(),
@@ -302,13 +295,13 @@ pub fn get_all_tests() -> Vec<TestCase> {
 
 pub fn group_tests_by_category(tests: &[TestCase]) -> HashMap<TestCategory, Vec<&TestCase>> {
     let mut grouped = HashMap::new();
-    
+
     for test in tests {
         grouped
             .entry(test.category.clone())
             .or_insert_with(Vec::new)
             .push(test);
     }
-    
+
     grouped
 }
