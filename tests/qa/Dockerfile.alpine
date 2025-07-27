@@ -1,0 +1,33 @@
+# Alpine-based testing environment for tree CLI (musl compatibility)
+FROM alpine:3.19
+
+# Set environment variables
+ENV RUST_VERSION=stable
+
+# Install system dependencies
+RUN apk add --no-cache \
+    curl \
+    build-base \
+    git \
+    ca-certificates \
+    musl-dev \
+    bash
+
+# Install Rust
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable
+ENV PATH="/root/.cargo/bin:${PATH}"
+
+# Verify Rust installation
+RUN rustc --version && cargo --version
+
+# Set working directory
+WORKDIR /app
+
+# Copy the entire project
+COPY . .
+
+# Make test script executable
+RUN chmod +x /app/tests/qa/qa-docker-test.sh
+
+# Default command runs the QA tests
+CMD ["./tests/qa/qa-docker-test.sh"]
