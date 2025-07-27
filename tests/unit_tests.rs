@@ -174,14 +174,14 @@ fn test_fromfile_tar_format_detection() {
 fn test_list_directory_errors() {
     let options = create_basic_options();
 
-    // Test with non-existent directory - tree actually succeeds but logs errors
+    // Test with non-existent directory - should return an error
     let nonexistent_path = if cfg!(windows) {
         "C:\\nonexistent\\path\\for\\sure"
     } else {
         "/path/that/does/not/exist/for/sure"
     };
     let result = list_directory(nonexistent_path, &options);
-    assert!(result.is_ok()); // Tree continues even with directory read errors
+    assert!(result.is_err()); // Tree should return error for non-existent directories
 }
 
 #[test]

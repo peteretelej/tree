@@ -291,7 +291,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
             .collect(),
         Err(e) => {
             eprintln!("Error reading directory {current_path:?}: {e}");
-            return Ok(());
+            return Err(e);
         }
     };
 
