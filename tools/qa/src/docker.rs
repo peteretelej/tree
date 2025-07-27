@@ -7,6 +7,9 @@ use std::path::Path;
 use tracing::{info, warn};
 use futures::StreamExt;
 
+use crate::tests::{TestCase, get_all_tests, group_tests_by_category};
+use crate::executor::TestExecutor;
+
 pub struct DockerManager {
     docker: Docker,
 }
@@ -76,11 +79,18 @@ impl DockerManager {
         
         println!("  {} Creating container: {}", "🐳".blue(), container_name);
 
+        // Create the test script in the container
+        let test_script = if platform == "windows" {
+            crate::environment::create_windows_setup_script()?
+        } else {
+            create_unix_test_script()?
+        };
+
         // Container configuration
         let config = Config {
             image: Some(image_name.to_string()),
             working_dir: Some("/app".to_string()),
-            cmd: Some(vec!["/app/tests/qa/qa-docker-test.sh".to_string()]),
+            cmd: Some(vec!["bash".to_string(), "-c".to_string(), test_script]),
             ..Default::default()
         };
 
@@ -135,8 +145,22 @@ impl DockerManager {
             warn!("Failed to remove container {}: {}", container_name, e);
         }
 
-        // Parse test results
-        let results = parse_test_output(&output, exit_code == 0);
+        // Execute tests using the new test executor
+        let executor = TestExecutor::new(platform.to_string());
+        let summary = executor.execute_all_tests(&output).await?;
+        
+        // Convert summary to TestResults for compatibility
+        let results = TestResults {
+            platform: platform.to_string(),
+            total_tests: summary.total_tests as u32,
+            passed_tests: summary.passed_tests as u32,
+            failed_tests: summary.failed_tests as u32,
+            success: summary.failed_tests == 0,
+            output: output.clone(),
+        };
+        
+        // Print summary
+        executor.print_summary(&summary);
         
         Ok(results)
     }
@@ -200,6 +224,120 @@ fn tar_directory(path: &Path) -> Result<Vec<u8>> {
         tar.finish()?;
     }
     Ok(tar_data)
+}
+
+fn create_unix_test_script() -> Result<String> {
+    let setup_script = crate::environment::setup_test_environment()?;
+    let tests = get_all_tests();
+    
+    let mut script = setup_script;
+    script.push_str("\n\n# Execute all tests\n");
+    script.push_str("cd /tmp/qa_test\n");
+    script.push_str("TREE_BINARY=\"/app/target/release/tree\"\n\n");
+    
+    // Add test execution functions
+    script.push_str(r#"
+log_test() {
+    echo "$(date '+%Y-%m-%d %H:%M:%S') - TEST: $1"
+}
+
+log_result() {
+    local result="$1"
+    local test_name="$2"
+    local details="$3"
+    
+    if [ "$result" = "PASS" ]; then
+        echo "✓ PASS: $test_name"
+    else
+        echo "✗ FAIL: $test_name"
+        if [ -n "$details" ]; then
+            echo "  Details: $details"
+        fi
+    fi
+}
+
+run_test() {
+    local test_name="$1"
+    local command="$2"
+    local expected_pattern="$3"
+    local should_fail="$4"
+    
+    log_test "$test_name"
+    echo "  Command: $command"
+    echo "  Working directory: $(pwd)"
+    echo "  Files in current directory:"
+    ls -la | head -10
+    
+    if [ "$should_fail" = "true" ]; then
+        if output=$($command 2>&1); then
+            exit_code=$?
+            log_result "FAIL" "$test_name" "Command should have failed but succeeded"
+            echo "  Exit code: $exit_code"
+        else
+            exit_code=$?
+            log_result "PASS" "$test_name"
+            echo "  Exit code: $exit_code"
+        fi
+    else
+        if output=$($command 2>&1); then
+            exit_code=$?
+            echo "  Exit code: $exit_code"
+            if [ -n "$expected_pattern" ]; then
+                if echo "$output" | grep -q "$expected_pattern"; then
+                    log_result "PASS" "$test_name"
+                else
+                    log_result "FAIL" "$test_name" "Output doesn't match expected pattern: $expected_pattern"
+                    echo "  Expected pattern: '$expected_pattern'"
+                    echo "  Actual output:"
+                    echo "$output" | sed 's/^/    /'
+                fi
+            else
+                log_result "PASS" "$test_name"
+            fi
+        else
+            exit_code=$?
+            log_result "FAIL" "$test_name" "Command failed unexpectedly"
+            echo "  Exit code: $exit_code"
+            echo "  Error output: $output"
+        fi
+    fi
+}
+
+"#);
+
+    // Add each test
+    for test in tests {
+        let should_fail = if test.should_fail { "true" } else { "false" };
+        let expected_pattern = test.expected_pattern.unwrap_or_default();
+        
+        script.push_str(&format!(
+            "run_test \"{}\" \"{}\" \"{}\" \"{}\"\n",
+            test.name,
+            test.command,
+            expected_pattern,
+            should_fail
+        ));
+    }
+
+    // Add special handling for output file test
+    script.push_str(r#"
+# Special handling for output file test
+OUTPUT_FILE="/tmp/test_output.txt"
+if [ -f "$OUTPUT_FILE" ]; then
+    if [ -s "$OUTPUT_FILE" ]; then
+        log_result "PASS" "Output file created and has content"
+    else
+        log_result "FAIL" "Output file created but is empty"
+    fi
+    rm -f "$OUTPUT_FILE"
+else
+    log_result "FAIL" "Output file was not created" 
+fi
+
+log "All tests completed"
+"#);
+    
+    Ok(script)
 }
 
 fn parse_test_output(output: &str, success: bool) -> TestResults {

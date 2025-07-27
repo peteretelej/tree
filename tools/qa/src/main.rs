@@ -5,6 +5,10 @@ use std::path::PathBuf;
 use tracing::{info, error};
 
 mod docker;
+mod tests;
+mod environment;
+mod executor;
+
 use docker::DockerManager;
 
 #[derive(Parser)]
