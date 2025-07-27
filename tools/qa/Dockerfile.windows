@@ -1,0 +1,28 @@
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
+
+# Install Chocolatey
+RUN powershell -Command \
+    Set-ExecutionPolicy Bypass -Scope Process -Force; \
+    [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; \
+    iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+
+# Install Git and Visual Studio Build Tools
+RUN choco install -y git visualstudio2022-workload-vctools
+
+# Install Rust
+RUN powershell -Command \
+    Invoke-WebRequest -Uri 'https://forge.rust-lang.org/infra/channel-archive.html' -UseBasicParsing | Out-Null; \
+    Invoke-WebRequest -Uri 'https://win.rustup.rs/x86_64' -OutFile 'rustup-init.exe' -UseBasicParsing; \
+    .\rustup-init.exe -y --default-toolchain stable; \
+    Remove-Item .\rustup-init.exe
+
+# Set environment variables
+ENV PATH="C:\Users\ContainerUser\.cargo\bin;${PATH}"
+
+# Set working directory
+WORKDIR C:\app
+
+# Copy project files
+COPY . .
+
+# The QA tool will run its own build and test commands

@@ -157,17 +157,26 @@ cp scripts/pre-push .git/hooks/pre-push
 
 #### QA Testing
 
-The folder [`tests/qa`](tests/qa) contains scripts for manual QA testing of the `tree` CLI tool. These scripts are designed to validate the features as advertised in this README. This is intended to exclusively use the generated binaries and not code or existing tests. Please manually run QA tests before any releases (TODO: add to release pipeline).
+The project includes a comprehensive Rust-based QA testing tool in [`tools/qa`](tools/qa) that validates all tree CLI features across multiple platforms using Docker containers.
 
 ```bash
-# Run all platforms (Ubuntu, Alpine Linux, and Windows  - if on Windows)
-cd tests/qa && ./qa-test.sh
+# Build the QA tool
+cd tools/qa && cargo build --release
 
-# Test specific platform
-./qa-test.sh --linux
+# Run tests on Linux platform
+./target/release/qa test --platforms linux
+
+# Run tests on multiple platforms  
+./target/release/qa test --platforms linux,alpine
+
+# Run with verbose output for debugging
+./target/release/qa test --platforms linux --verbose
+
+# Clean up Docker resources
+./target/release/qa clean
 ```
 
-Requires Docker. Tests run in isolated containers with detailed failure reports including exact commands, exit codes, and output differences. See [`tests/qa/README.md`](tests/qa/README.md) for full documentation.
+The QA tool executes 34 comprehensive tests across 9 categories (basic functionality, file filtering, display options, sorting, etc.) in isolated Docker containers. Tests validate features as advertised in this README using only the generated binaries. See [`tools/qa/README.md`](tools/qa/README.md) for full documentation.
 
 #### VS Code Settings
 
