@@ -83,10 +83,68 @@ fn format_date(time: SystemTime) -> String {
     }
 }
 
+// Helper function to check if a directory (recursively) contains any files matching the pattern
+fn directory_contains_pattern_matches(
+    dir_path: &Path,
+    options: &TreeOptions,
+    depth: usize,
+) -> std::io::Result<bool> {
+    // If no pattern is specified, assume there are matches
+    let pattern = match &options.pattern_glob {
+        Some(p) => p,
+        None => return Ok(true),
+    };
+
+    // Check level limit to avoid infinite recursion
+    if let Some(max_level) = options.level {
+        if depth >= max_level as usize {
+            return Ok(false);
+        }
+    }
+
+    let read_dir_result = fs::read_dir(dir_path);
+    let entries = match read_dir_result {
+        Ok(reader) => reader.filter_map(Result::ok).collect::<Vec<_>>(),
+        Err(_) => return Ok(false), // If we can't read the directory, assume no matches
+    };
+
+    for entry in entries {
+        let path = entry.path();
+        let file_name = path.file_name().and_then(|name| name.to_str());
+
+        // Skip hidden files if not showing all files
+        let is_hidden = file_name.map(|name| name.starts_with('.')).unwrap_or(false);
+        if !options.all_files && is_hidden {
+            continue;
+        }
+
+        // Skip excluded files
+        if let Some(exclude_pattern) = &options.exclude_pattern {
+            if file_name.is_some_and(|name| exclude_pattern.matches(name)) {
+                continue;
+            }
+        }
+
+        if path.is_dir() {
+            // Recursively check subdirectories
+            if directory_contains_pattern_matches(&path, options, depth + 1)? {
+                return Ok(true);
+            }
+        } else {
+            // Check if this file matches the pattern
+            if file_name.is_some_and(|name| pattern.matches(name)) {
+                return Ok(true);
+            }
+        }
+    }
+
+    Ok(false)
+}
+
 fn should_skip_entry(
     entry: &fs::DirEntry,
     options: &TreeOptions,
-    _depth: usize,
+    depth: usize,
 ) -> std::io::Result<bool> {
     let path = entry.path();
     let file_name = path.file_name().and_then(|name| name.to_str());
@@ -106,8 +164,16 @@ fn should_skip_entry(
 
     // Check include pattern (only if exclude didn't match)
     if let Some(pattern) = &options.pattern_glob {
-        if !path.is_dir() && !file_name.is_some_and(|name| pattern.matches(name)) {
-            return Ok(true);
+        if path.is_dir() {
+            // For directories, check if they contain any matching files
+            if !directory_contains_pattern_matches(&path, options, depth + 1)? {
+                return Ok(true);
+            }
+        } else {
+            // For files, check if they match the pattern
+            if !file_name.is_some_and(|name| pattern.matches(name)) {
+                return Ok(true);
+            }
         }
     }
 

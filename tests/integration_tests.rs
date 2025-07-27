@@ -405,6 +405,44 @@ fn test_fromfile_with_flags() {
 }
 
 #[test]
+fn test_pattern_filtering_prunes_empty_directories() {
+    let temp_dir = TempDir::new().unwrap();
+    let root = temp_dir.path();
+
+    // Create test structure with empty and non-empty directories
+    fs::create_dir_all(root.join("empty_branch/empty_sub")).unwrap();
+    fs::create_dir_all(root.join("match_branch")).unwrap();
+    fs::create_dir_all(root.join("partial_match/has_files")).unwrap();
+    fs::create_dir_all(root.join("partial_match/empty_sub")).unwrap();
+    
+    // Create files
+    fs::write(root.join("match_branch/file.txt"), "content").unwrap();
+    fs::write(root.join("partial_match/has_files/test.txt"), "content").unwrap();
+    fs::write(root.join("other.log"), "content").unwrap();
+
+    // Test pattern filtering
+    let output = cmd()
+        .args(["-P", "*.txt", temp_dir.path().to_str().unwrap()])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    // Should show directories that contain matching files
+    assert!(output_contains(&output, "match_branch"));
+    assert!(output_contains(&output, "partial_match"));
+    assert!(output_contains(&output, "has_files"));
+    assert!(output_contains(&output, "file.txt"));
+    assert!(output_contains(&output, "test.txt"));
+
+    // Should NOT show empty directories
+    assert!(output_not_contains(&output, "empty_branch"));
+    assert!(output_not_contains(&output, "empty_sub"));
+    assert!(output_not_contains(&output, "other.log"));
+}
+
+#[test]
 fn test_error_handling() {
     // Test with non-existent directory - should succeed but with error in stderr
     let nonexistent_path = if cfg!(windows) {
