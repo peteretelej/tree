@@ -2,6 +2,7 @@ use ansi_term::Colour::{Blue, Cyan, Green, Red, Yellow};
 use is_executable::IsExecutable;
 use std::fs;
 
+// Colorize the tree output based on the file type and extension.
 pub fn colorize(entry: &fs::DirEntry, text: &str) -> String {
     let file_type = match entry.file_type() {
         Ok(ft) => ft,

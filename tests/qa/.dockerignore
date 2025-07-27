@@ -1,0 +1,23 @@
+# Ignore build artifacts and logs
+target/
+tests/qa/logs/
+*.log
+
+# Ignore git and IDE files
+.git/
+.gitignore
+.vscode/
+.idea/
+
+# Ignore documentation that's not needed for testing
+docs/
+README.md
+LICENSE
+
+# Ignore store assets
+store-assets/
+wix/
+
+# Ignore coverage and test artifacts
+coverage/
+*.profraw

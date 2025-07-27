@@ -1,5 +1,4 @@
-// CLI module - handles command line argument parsing and execution
-// Moved from main.rs to make it testable
+// CLI module - handles cli flag parsing
 
 use clap::Parser;
 use glob::Pattern;

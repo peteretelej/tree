@@ -12,3 +12,4 @@ Cargo.lock text eol=lf
 *.jpg binary
 
 store-assets/** linguist-vendored
+tests/qa/** linguist-vendored

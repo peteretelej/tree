@@ -155,6 +155,20 @@ Consider copying the `pre-push` script to your git hooks directory:
 cp scripts/pre-push .git/hooks/pre-push
 ```
 
+#### QA Testing
+
+The folder [`tests/qa`](tests/qa) contains scripts for manual QA testing of the `tree` CLI tool. These scripts are designed to validate the features as advertised in this README. This is intended to exclusively use the generated binaries and not code or existing tests. Please manually run QA tests before any releases (TODO: add to release pipeline).
+
+```bash
+# Run all platforms (Ubuntu, Alpine Linux, and Windows  - if on Windows)
+cd tests/qa && ./qa-test.sh
+
+# Test specific platform
+./qa-test.sh --linux
+```
+
+Requires Docker. Tests run in isolated containers with detailed failure reports including exact commands, exit codes, and output differences. See [`tests/qa/README.md`](tests/qa/README.md) for full documentation.
+
 #### VS Code Settings
 
 For VS Code users, add this to your settings.json:
