@@ -13,47 +13,7 @@ log() {
 
 log "Setting up test environment..."
 
-# Create test directory structure in container temp
-TEST_DIR="/tmp/qa_test"
-mkdir -p "$TEST_DIR"
-cd "$TEST_DIR"
-
-# Create various test files and directories
-mkdir -p dir1/subdir1 dir1/subdir2 dir2 .hidden_dir
-touch file1.txt file2.log file3.py .hidden_file
-touch dir1/file_in_dir1.txt dir1/subdir1/deep_file.txt
-touch .hidden_dir/hidden_file.txt
-
-# Create files with different sizes
-echo "small file" > small.txt
-dd if=/dev/zero of=large.bin bs=1024 count=10 2>/dev/null
-
-# Create symlinks (if supported)
-if ln -s file1.txt symlink.txt 2>/dev/null; then
-    log "Created symbolic links for testing"
-fi
-
-# Set different modification times
-touch -t 202301010000 old_file.txt
-touch new_file.txt
-
-# Create files for pattern testing
-touch script.sh config.ini README.md
-
-# Create file listing for fromfile tests
-cat > /tmp/file_list.txt << 'EOF'
-dir1/
-dir1/file_in_dir1.txt
-dir2/
-file1.txt
-file2.log
-EOF
-
-log "Test environment created in: $(pwd)"
-log "Files created:"
-ls -la
-
-# Build the binary
+# Build the binary first (once)
 log "Building tree binary..."
 cd /app
 
@@ -66,9 +26,6 @@ if cargo build --release >/dev/null 2>&1; then
     # Get binary info
     ls -la "$TREE_BINARY"
     
-    # Return to test directory
-    cd "$TEST_DIR"
-    
     log "Setup completed successfully"
 else
     log "ERROR: Failed to build binary"
@@ -77,6 +34,50 @@ fi
 "#;
 
     Ok(setup_script.to_string())
+}
+
+pub fn create_isolated_test_environment() -> Result<String> {
+    let script = r#"
+create_test_env() {
+    local test_dir="$1"
+    mkdir -p "$test_dir"
+    cd "$test_dir"
+    
+    # Create various test files and directories
+    mkdir -p dir1/subdir1 dir1/subdir2 dir2 .hidden_dir
+    touch file1.txt file2.log file3.py .hidden_file
+    touch dir1/file_in_dir1.txt dir1/subdir1/deep_file.txt
+    touch .hidden_dir/hidden_file.txt
+
+    # Create files with different sizes
+    echo "small file" > small.txt
+    dd if=/dev/zero of=large.bin bs=1024 count=10 2>/dev/null
+
+    # Create symlinks (if supported)
+    ln -s file1.txt symlink.txt 2>/dev/null || true
+
+    # Set different modification times
+    touch -t 202301010000 old_file.txt
+    touch new_file.txt
+
+    # Create files for pattern testing
+    touch script.sh config.ini README.md
+
+    # Create file listing for fromfile tests
+    cat > "${test_dir}/file_list.txt" << 'EOF'
+dir1/
+dir1/file_in_dir1.txt
+dir2/
+file1.txt
+file2.log
+EOF
+
+    # Ensure all files are synced
+    sync
+}
+"#;
+
+    Ok(script.to_string())
 }
 
 pub fn create_windows_setup_script() -> Result<String> {

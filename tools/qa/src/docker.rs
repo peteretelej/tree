@@ -254,11 +254,13 @@ fn tar_directory(path: &Path) -> Result<Vec<u8>> {
 
 fn create_unix_test_script() -> Result<String> {
     let setup_script = crate::environment::setup_test_environment()?;
+    let isolated_env_script = crate::environment::create_isolated_test_environment()?;
     let tests = get_all_tests();
 
     let mut script = setup_script;
-    script.push_str("\n\n# Execute all tests\n");
-    script.push_str("cd /tmp/qa_test\n");
+    script.push_str("\n\n");
+    script.push_str(&isolated_env_script);
+    script.push_str("\n");
     script.push_str("TREE_BINARY=\"/app/target/release/tree\"\n\n");
 
     // Add test execution functions
@@ -282,20 +284,42 @@ log_result() {
     fi
 }
 
-run_test() {
+run_isolated_test() {
     local test_name="$1"
     local command="$2"
     local expected_pattern="$3"
     local should_fail="$4"
+    local test_id="$5"
     
     log_test "$test_name"
+    
+    # Create isolated test environment
+    local test_dir="/tmp/qa_test_${test_id}"
+    create_test_env "$test_dir"
+    
     echo "  Command: $command"
     echo "  Working directory: $(pwd)"
     echo "  Files in current directory:"
     ls -la | head -10
     
+    # Replace /app/target/release/tree with $TREE_BINARY for consistency
+    local adjusted_command="${command//\/app\/target\/release\/tree/$TREE_BINARY}"
+    
+    # Special handling for fromfile tests
+    if [[ "$command" == *"--fromfile"* ]]; then
+        if [[ "$command" == *"/tmp/file_list.txt"* ]]; then
+            # Update path to current test directory
+            adjusted_command="${adjusted_command//\/tmp\/file_list.txt/${test_dir}/file_list.txt}"
+        fi
+    fi
+    
+    # Special handling for output file tests
+    if [[ "$command" == *"-o /tmp/test_output.txt"* ]]; then
+        adjusted_command="${adjusted_command//\/tmp\/test_output.txt/${test_dir}/test_output.txt}"
+    fi
+    
     if [ "$should_fail" = "true" ]; then
-        if output=$($command 2>&1); then
+        if output=$(eval "$adjusted_command" 2>&1); then
             exit_code=$?
             log_result "FAIL" "$test_name" "Command should have failed but succeeded"
             echo "  Exit code: $exit_code"
@@ -305,10 +329,19 @@ run_test() {
             echo "  Exit code: $exit_code"
         fi
     else
-        if output=$($command 2>&1); then
+        if output=$(eval "$adjusted_command" 2>&1); then
             exit_code=$?
             echo "  Exit code: $exit_code"
-            if [ -n "$expected_pattern" ]; then
+            
+            # Special validation for output file test
+            if [[ "$test_name" == *"Output to file"* ]]; then
+                local output_file="${test_dir}/test_output.txt"
+                if [ -f "$output_file" ] && [ -s "$output_file" ]; then
+                    log_result "PASS" "$test_name"
+                else
+                    log_result "FAIL" "$test_name" "Output file not created or empty"
+                fi
+            elif [ -n "$expected_pattern" ]; then
                 if echo "$output" | grep -q "$expected_pattern"; then
                     log_result "PASS" "$test_name"
                 else
@@ -327,40 +360,29 @@ run_test() {
             echo "  Error output: $output"
         fi
     fi
+    
+    # Optional: cleanup test directory to save space
+    # rm -rf "$test_dir"
 }
 
 "#);
 
-    // Add each test
-    for test in tests {
+    // Add each test with isolated environment
+    for (i, test) in tests.iter().enumerate() {
         let should_fail = if test.should_fail { "true" } else { "false" };
-        let expected_pattern = test.expected_pattern.unwrap_or_default();
+        let expected_pattern = test.expected_pattern.as_deref().unwrap_or("");
 
         script.push_str(&format!(
-            "run_test \"{}\" \"{}\" \"{}\" \"{}\"\n",
-            test.name, test.command, expected_pattern, should_fail
+            "run_isolated_test \"{}\" \"{}\" \"{}\" \"{}\" \"{:03}\"\n",
+            test.name.replace('"', "\\\""),
+            test.command.replace('"', "\\\""),
+            expected_pattern.replace('"', "\\\""),
+            should_fail,
+            i + 1
         ));
     }
 
-    // Add special handling for output file test
-    script.push_str(
-        r#"
-# Special handling for output file test
-OUTPUT_FILE="/tmp/test_output.txt"
-if [ -f "$OUTPUT_FILE" ]; then
-    if [ -s "$OUTPUT_FILE" ]; then
-        log_result "PASS" "Output file created and has content"
-    else
-        log_result "FAIL" "Output file created but is empty"
-    fi
-    rm -f "$OUTPUT_FILE"
-else
-    log_result "FAIL" "Output file was not created" 
-fi
-
-log "All tests completed"
-"#,
-    );
+    script.push_str("\nlog \"All tests completed\"\n");
 
     Ok(script)
 }
