@@ -105,7 +105,7 @@ fn directory_contains_pattern_matches(
     let read_dir_result = fs::read_dir(dir_path);
     let entries = match read_dir_result {
         Ok(reader) => reader.filter_map(Result::ok).collect::<Vec<_>>(),
-        Err(_) => return Ok(false), // If we can't read the directory, assume no matches
+        Err(_) => return Ok(true), // If we can't read the directory, include it to show error message
     };
 
     for entry in entries {
@@ -427,7 +427,13 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
         let is_entry_last = index == last_index;
 
         // Format and print the line for the current entry
-        let line = format_entry_line(&entry, options, indent_state, is_entry_last)?;
+        let mut line = format_entry_line(&entry, options, indent_state, is_entry_last)?;
+        
+        // Check if this is a directory that can't be read, and if so, append error message
+        if entry.file_type()?.is_dir() && fs::read_dir(&path).is_err() {
+            line.push_str("  [error opening dir]");
+        }
+        
         writeln!(writer, "{line}")?;
 
         // Update stats and decide recursion based on entry type
@@ -472,18 +478,23 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
             // --- End limit checks ---
 
             if !skip_recursion {
-                // Recurse only if no limits apply
-                let mut next_indent_state = indent_state.to_vec();
-                next_indent_state.push(is_entry_last);
-                traverse_directory(
-                    writer,
-                    root_path.as_ref(),
-                    &path, // Recurse into the child directory `path`
-                    options,
-                    depth + 1,
-                    stats,
-                    &next_indent_state,
-                )?;
+                // Check if we can read the directory before recursing
+                if fs::read_dir(&path).is_ok() {
+                    // Recurse only if no limits apply and directory is readable
+                    let mut next_indent_state = indent_state.to_vec();
+                    next_indent_state.push(is_entry_last);
+                    traverse_directory(
+                        writer,
+                        root_path.as_ref(),
+                        &path, // Recurse into the child directory `path`
+                        options,
+                        depth + 1,
+                        stats,
+                        &next_indent_state,
+                    )?;
+                }
+                // If directory is not readable, we don't recurse but the error message
+                // is already shown in the main line above
             }
         } else {
             // It's a file
