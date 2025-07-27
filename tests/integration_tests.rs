@@ -406,7 +406,7 @@ fn test_fromfile_with_flags() {
 
 #[test]
 fn test_error_handling() {
-    // Test with non-existent directory - should succeed but with error in stderr
+    // Test with non-existent directory - should fail with non-zero exit code
     let nonexistent_path = if cfg!(windows) {
         "C:\\nonexistent\\path"
     } else {
@@ -415,7 +415,7 @@ fn test_error_handling() {
     let output = cmd()
         .arg(nonexistent_path)
         .assert()
-        .success() // Tree continues even with directory read errors
+        .failure() // Tree should fail with non-zero exit code for non-existent directories
         .get_output()
         .stderr
         .clone();
