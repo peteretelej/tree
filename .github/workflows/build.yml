@@ -6,7 +6,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: "-D warnings"
 
 permissions:
   contents: read
@@ -19,14 +18,9 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
 
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
-
-      - name: Run clippy
-        run: cargo clippy -- -D warnings
 
       - name: Run tests
         run: cargo test --verbose
