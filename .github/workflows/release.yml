@@ -158,3 +158,17 @@ jobs:
           asset_name: tree-${{ github.ref_name }}-${{ matrix.name }}.msi
           tag: ${{ github.ref }}
           overwrite: true
+
+  publish-crate:
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish to crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

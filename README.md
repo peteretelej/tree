@@ -208,7 +208,7 @@ git tag -a v1.2.3 -m "tree v1.2.3"
 git push origin v1.2.3
 ```
 
-GitHub Actions will build and publish the release. Visit the [Releases page](https://github.com/peteretelej/tree/releases) to generate automated release notes for the release.
+GitHub Actions will automatically build binaries and publish to GitHub releases and crates.io.
 
 </details>
 
