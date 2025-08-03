@@ -505,19 +505,19 @@ fn test_special_characters_in_filenames() {
 fn test_list_directory_as_string_basic() {
     let temp_dir = create_test_directory();
     let options = create_default_options();
-    
+
     let result = list_directory_as_string(temp_dir.path(), &options);
     assert!(result.is_ok());
-    
+
     let output = result.unwrap();
     assert!(!output.is_empty());
-    
+
     // Check that the output contains expected directories
     assert!(output.contains("src"));
     assert!(output.contains("tests"));
     assert!(output.contains("README.md"));
     assert!(output.contains("Cargo.toml"));
-    
+
     // Hidden files should not be included by default
     assert!(!output.contains(".hidden"));
     assert!(!output.contains(".gitignore"));
@@ -528,12 +528,12 @@ fn test_list_directory_as_string_with_all_files() {
     let temp_dir = create_test_directory();
     let mut options = create_default_options();
     options.all_files = true;
-    
+
     let result = list_directory_as_string(temp_dir.path(), &options);
     assert!(result.is_ok());
-    
+
     let output = result.unwrap();
-    
+
     // Hidden files should now be included
     assert!(output.contains(".hidden"));
     assert!(output.contains(".gitignore"));
@@ -543,12 +543,12 @@ fn test_list_directory_as_string_with_all_files() {
 fn test_list_directory_as_string_with_tree_formatting() {
     let temp_dir = create_test_directory();
     let options = create_default_options();
-    
+
     let result = list_directory_as_string(temp_dir.path(), &options);
     assert!(result.is_ok());
-    
+
     let output = result.unwrap();
-    
+
     // Check for tree formatting characters
     assert!(output.contains("├──") || output.contains("└──"));
     assert!(output.contains("│") || output.contains("|"));
@@ -559,12 +559,12 @@ fn test_list_directory_as_string_with_no_report() {
     let temp_dir = create_test_directory();
     let mut options = create_default_options();
     options.no_report = true;
-    
+
     let result = list_directory_as_string(temp_dir.path(), &options);
     assert!(result.is_ok());
-    
+
     let output = result.unwrap();
-    
+
     // Should not contain the summary report
     assert!(!output.contains("directories"));
     assert!(!output.contains("files"));
@@ -574,7 +574,7 @@ fn test_list_directory_as_string_with_no_report() {
 fn test_list_directory_as_string_nonexistent_path() {
     let options = create_default_options();
     let nonexistent_path = "/this/path/does/not/exist";
-    
+
     let result = list_directory_as_string(nonexistent_path, &options);
     assert!(result.is_err());
 }

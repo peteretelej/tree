@@ -437,20 +437,20 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
 }
 
 /// Lists the directory structure and returns it as a String instead of writing to stdout.
-/// 
+///
 /// # Arguments
 /// * `path` - The path to list
 /// * `options` - TreeOptions to control the output format
-/// 
+///
 /// # Returns
 /// * `Ok(String)` - The formatted directory tree as a string
 /// * `Err(io::Error)` - If an error occurs during traversal
-/// 
+///
 /// # Example
 /// ```rust,no_run
 /// use rust_tree::rust_tree::options::TreeOptions;
 /// use rust_tree::rust_tree::traversal::list_directory_as_string;
-/// 
+///
 /// let options = TreeOptions {
 ///     all_files: false,
 ///     level: None,
@@ -478,15 +478,18 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
 /// let tree_output = list_directory_as_string(".", &options).unwrap();
 /// println!("{}", tree_output);
 /// ```
-pub fn list_directory_as_string<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io::Result<String> {
+pub fn list_directory_as_string<P: AsRef<Path>>(
+    path: P,
+    options: &TreeOptions,
+) -> std::io::Result<String> {
     let mut buffer = Vec::new();
-    
+
     if options.from_file {
         list_from_input_with_writer(path.as_ref(), options, &mut buffer)?;
     } else {
         list_from_filesystem_with_writer(path.as_ref(), options, &mut buffer)?;
     }
-    
+
     String::from_utf8(buffer).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
@@ -509,7 +512,11 @@ fn list_from_input(input_path: &Path, options: &TreeOptions) -> std::io::Result<
     list_from_input_with_writer(input_path, options, writer)
 }
 
-fn list_from_input_with_writer<W: Write>(input_path: &Path, options: &TreeOptions, writer: W) -> std::io::Result<()> {
+fn list_from_input_with_writer<W: Write>(
+    input_path: &Path,
+    options: &TreeOptions,
+    writer: W,
+) -> std::io::Result<()> {
     let lines = read_file_listing(input_path)?;
     let entries = parse_file_listing(lines);
     let virtual_tree = build_virtual_tree(entries, options);
@@ -521,8 +528,11 @@ fn list_from_filesystem(current_path: &Path, options: &TreeOptions) -> std::io::
     list_from_filesystem_with_writer(current_path, options, writer)
 }
 
-fn list_from_filesystem_with_writer<W: Write>(current_path: &Path, options: &TreeOptions, mut writer: W) -> std::io::Result<()> {
-
+fn list_from_filesystem_with_writer<W: Write>(
+    current_path: &Path,
+    options: &TreeOptions,
+    mut writer: W,
+) -> std::io::Result<()> {
     let display_path = if options.full_path {
         current_path.canonicalize()?.display().to_string()
     } else {
@@ -567,12 +577,11 @@ fn list_from_filesystem_with_writer<W: Write>(current_path: &Path, options: &Tre
     Ok(())
 }
 
-fn display_virtual_tree(virtual_tree: VirtualTree, options: &TreeOptions) -> std::io::Result<()> {
-    let writer = create_writer(options)?;
-    display_virtual_tree_with_writer(virtual_tree, options, writer)
-}
-
-fn display_virtual_tree_with_writer<W: Write>(virtual_tree: VirtualTree, options: &TreeOptions, mut writer: W) -> std::io::Result<()> {
+fn display_virtual_tree_with_writer<W: Write>(
+    virtual_tree: VirtualTree,
+    options: &TreeOptions,
+    mut writer: W,
+) -> std::io::Result<()> {
     use std::collections::HashMap;
 
     writeln!(writer, "{}", virtual_tree.root_name)?;
