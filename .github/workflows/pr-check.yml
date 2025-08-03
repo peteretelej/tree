@@ -6,7 +6,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: "-D warnings"
 
 permissions:
   contents: read
@@ -26,13 +25,15 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Check formatting
-        run: cargo fmt --check
+      - name: Check formatting (info)
+        run: cargo fmt --check || echo "::warning::Run 'cargo fmt' to fix formatting"
+        continue-on-error: true
 
-      - name: Run clippy
-        run: cargo clippy -- -D warnings
+      - name: Run clippy (info)
+        run: cargo clippy || echo "::warning::Clippy found issues"
+        continue-on-error: true
 
-      - name: Run tests
+      - name: Run tests (required)
         run: cargo test --verbose
 
       - name: Install tarpaulin

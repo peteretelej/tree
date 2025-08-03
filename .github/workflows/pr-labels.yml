@@ -12,33 +12,20 @@ jobs:
     name: Validate PR Labels
     runs-on: ubuntu-latest
     steps:
-      - name: Check for valid category label
+      - name: Check for labels
         env:
-          # Get labels as a JSON array string
           PR_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
         run: |
-          # Define excluded labels
-          excluded_labels=("help-wanted" "question" "invalid" "wontfix")
-
-          # Use jq to parse the JSON array and check labels
-          valid_label_found=false
-          for label in $(echo "$PR_LABELS" | jq -r '.[]'); do
-            is_excluded=false
-            for excluded in "${excluded_labels[@]}"; do
-              if [[ "$label" == "$excluded" ]]; then
-                is_excluded=true
-                break
-              fi
-            done
-            if [[ "$is_excluded" == "false" ]]; then
-              valid_label_found=true
-              break
-            fi
-          done
-
-          if [[ "$valid_label_found" == "false" ]]; then
-            echo "Error: PR must have at least one label that is not 'help-wanted', 'question', 'invalid', or 'wontfix'."
+          # Check if PR has valid labels
+          if [[ "$PR_LABELS" == "[]" ]]; then
+            echo "::error::Please select a label for this PR (under Labels)"
+            echo ""
+            echo "Please assign the PR a label. Commonly used labels:"
+            echo "  • enhancement"
+            echo "  • bug"
+            echo "  • devops"
+            echo "  • documentation"
+            echo ""
+            echo "Labels help organize PRs for review."
             exit 1
-          else
-            echo "Valid label found."
           fi
