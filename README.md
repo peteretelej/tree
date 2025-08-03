@@ -115,6 +115,8 @@ fn main() {
 }
 ```
 
+The library now also provides `list_directory_as_string` function that returns the tree output as a `String` instead of writing to stdout, useful when you need to capture the output for further processing.
+
 Using the `bytes_to_human_readable` function to print human readable file sizes
 
 ```rust
