@@ -436,26 +436,92 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
     }
 }
 
-fn list_from_input(input_path: &Path, options: &TreeOptions) -> std::io::Result<()> {
-    let lines = read_file_listing(input_path)?;
-    let entries = parse_file_listing(lines);
-    let virtual_tree = build_virtual_tree(entries, options);
-    display_virtual_tree(virtual_tree, options)
+/// Lists the directory structure and returns it as a String instead of writing to stdout.
+/// 
+/// # Arguments
+/// * `path` - The path to list
+/// * `options` - TreeOptions to control the output format
+/// 
+/// # Returns
+/// * `Ok(String)` - The formatted directory tree as a string
+/// * `Err(io::Error)` - If an error occurs during traversal
+/// 
+/// # Example
+/// ```rust,no_run
+/// use rust_tree::rust_tree::options::TreeOptions;
+/// use rust_tree::rust_tree::traversal::list_directory_as_string;
+/// 
+/// let options = TreeOptions {
+///     all_files: false,
+///     level: None,
+///     full_path: false,
+///     dir_only: false,
+///     no_indent: false,
+///     print_size: false,
+///     human_readable: false,
+///     pattern_glob: None,
+///     exclude_pattern: None,
+///     color: false,
+///     no_color: false,
+///     ascii: false,
+///     sort_by_time: false,
+///     reverse: false,
+///     print_mod_date: false,
+///     output_file: None,
+///     file_limit: None,
+///     dirs_first: false,
+///     classify: false,
+///     no_report: false,
+///     print_permissions: false,
+///     from_file: false,
+/// };
+/// let tree_output = list_directory_as_string(".", &options).unwrap();
+/// println!("{}", tree_output);
+/// ```
+pub fn list_directory_as_string<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io::Result<String> {
+    let mut buffer = Vec::new();
+    
+    if options.from_file {
+        list_from_input_with_writer(path.as_ref(), options, &mut buffer)?;
+    } else {
+        list_from_filesystem_with_writer(path.as_ref(), options, &mut buffer)?;
+    }
+    
+    String::from_utf8(buffer).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))
 }
 
-fn list_from_filesystem(current_path: &Path, options: &TreeOptions) -> std::io::Result<()> {
-    // Determine output writer: file or stdout
-    let mut writer: Box<dyn Write> = match &options.output_file {
+fn create_writer(options: &TreeOptions) -> std::io::Result<Box<dyn Write>> {
+    match &options.output_file {
         Some(filename) => {
             let file = OpenOptions::new()
                 .write(true)
                 .create(true)
-                .truncate(true) // Overwrite existing file
+                .truncate(true)
                 .open(filename)?;
-            Box::new(BufWriter::new(file))
+            Ok(Box::new(BufWriter::new(file)))
         }
-        None => Box::new(BufWriter::new(io::stdout())),
-    };
+        None => Ok(Box::new(BufWriter::new(io::stdout()))),
+    }
+}
+
+fn list_from_input(input_path: &Path, options: &TreeOptions) -> std::io::Result<()> {
+    let writer = create_writer(options)?;
+    list_from_input_with_writer(input_path, options, writer)
+}
+
+fn list_from_input_with_writer<W: Write>(input_path: &Path, options: &TreeOptions, writer: W) -> std::io::Result<()> {
+    let lines = read_file_listing(input_path)?;
+    let entries = parse_file_listing(lines);
+    let virtual_tree = build_virtual_tree(entries, options);
+    display_virtual_tree_with_writer(virtual_tree, options, writer)
+}
+
+fn list_from_filesystem(current_path: &Path, options: &TreeOptions) -> std::io::Result<()> {
+    let writer = create_writer(options)?;
+    list_from_filesystem_with_writer(current_path, options, writer)
+}
+
+fn list_from_filesystem_with_writer<W: Write>(current_path: &Path, options: &TreeOptions, mut writer: W) -> std::io::Result<()> {
 
     let display_path = if options.full_path {
         current_path.canonicalize()?.display().to_string()
@@ -502,20 +568,12 @@ fn list_from_filesystem(current_path: &Path, options: &TreeOptions) -> std::io::
 }
 
 fn display_virtual_tree(virtual_tree: VirtualTree, options: &TreeOptions) -> std::io::Result<()> {
-    use std::collections::HashMap;
+    let writer = create_writer(options)?;
+    display_virtual_tree_with_writer(virtual_tree, options, writer)
+}
 
-    // Determine output writer: file or stdout
-    let mut writer: Box<dyn Write> = match &options.output_file {
-        Some(filename) => {
-            let file = OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .open(filename)?;
-            Box::new(BufWriter::new(file))
-        }
-        None => Box::new(BufWriter::new(io::stdout())),
-    };
+fn display_virtual_tree_with_writer<W: Write>(virtual_tree: VirtualTree, options: &TreeOptions, mut writer: W) -> std::io::Result<()> {
+    use std::collections::HashMap;
 
     writeln!(writer, "{}", virtual_tree.root_name)?;
 
@@ -588,8 +646,8 @@ fn display_virtual_tree(virtual_tree: VirtualTree, options: &TreeOptions) -> std
     Ok(())
 }
 
-fn display_virtual_entries(
-    writer: &mut Box<dyn Write>,
+fn display_virtual_entries<W: Write>(
+    writer: &mut W,
     entries: &[&FileEntry],
     all_children: &std::collections::HashMap<String, Vec<&FileEntry>>,
     options: &TreeOptions,
@@ -643,8 +701,8 @@ fn display_virtual_entries(
     Ok(())
 }
 
-fn display_virtual_entry(
-    writer: &mut Box<dyn Write>,
+fn display_virtual_entry<W: Write>(
+    writer: &mut W,
     entry: &FileEntry,
     options: &TreeOptions,
     indent_state: &[bool],
