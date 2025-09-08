@@ -10,6 +10,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::os::unix::fs::PermissionsExt;
 
 use crate::rust_tree::display::colorize;
+use crate::rust_tree::icons::IconManager;
 // Conditionally import the permissions formatter only on Unix
 #[cfg(unix)]
 use crate::rust_tree::display::format_permissions_unix;
@@ -131,6 +132,7 @@ fn format_entry_line(
     options: &TreeOptions,
     indent_state: &[bool],
     is_last: bool,
+    icon_manager: &IconManager,
 ) -> std::io::Result<String> {
     let path = entry.path();
     let mut line = String::new();
@@ -182,10 +184,19 @@ fn format_entry_line(
     } else {
         entry.file_name().to_string_lossy().to_string()
     };
-    let colored_name = if options.no_color || !options.color {
-        name_part
+    
+    // Add icon if enabled
+    let display_name = if options.icons {
+        let icon = icon_manager.get_icon_for_path(&path);
+        format!("{} {}", icon, name_part)
     } else {
-        colorize(entry, &name_part)
+        name_part
+    };
+    
+    let colored_name = if options.no_color || !options.color {
+        display_name
+    } else {
+        colorize(entry, &display_name)
     };
     line.push_str(&colored_name);
 
@@ -255,6 +266,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
     depth: usize,
     stats: &mut (u64, u64),
     indent_state: &[bool],
+    icon_manager: &IconManager,
 ) -> std::io::Result<()> {
     // --- 1. Read and Pre-process Directory Entries ---
     let read_dir_result = fs::read_dir(current_path);
@@ -361,7 +373,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
         let is_entry_last = index == last_index;
 
         // Format and print the line for the current entry
-        let line = format_entry_line(&entry, options, indent_state, is_entry_last)?;
+        let line = format_entry_line(&entry, options, indent_state, is_entry_last, icon_manager)?;
         writeln!(writer, "{line}")?;
 
         // Update stats and decide recursion based on entry type
@@ -417,6 +429,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                     depth + 1,
                     stats,
                     &next_indent_state,
+                    icon_manager,
                 )?;
             }
         } else {
@@ -546,6 +559,9 @@ fn list_from_filesystem_with_writer<W: Write>(
 
     let mut stats = (0, 0); // (directories, files)
 
+    // Create icon manager if icons are enabled
+    let icon_manager = IconManager::new();
+    
     // Start the recursive traversal with empty initial indent state
     traverse_directory(
         &mut writer,  // Pass the writer
@@ -555,6 +571,7 @@ fn list_from_filesystem_with_writer<W: Write>(
         0, // Initial depth for root's contents
         &mut stats,
         &[], // Initial empty indent state
+        &icon_manager,
     )?;
 
     // Print summary only if --noreport is not set
@@ -623,6 +640,9 @@ fn display_virtual_tree_with_writer<W: Write>(
 
     let mut stats = (0, 0); // (directories, files)
 
+    // Create icon manager
+    let icon_manager = IconManager::new();
+    
     // Display tree starting from root
     if let Some(root_children) = children.get("") {
         display_virtual_entries(
@@ -633,6 +653,7 @@ fn display_virtual_tree_with_writer<W: Write>(
             &mut stats,
             &[],
             0,
+            &icon_manager,
         )?;
     }
 
@@ -663,6 +684,7 @@ fn display_virtual_entries<W: Write>(
     stats: &mut (u32, u32),
     indent_state: &[bool],
     depth: usize,
+    icon_manager: &IconManager,
 ) -> std::io::Result<()> {
     // Check level limit
     if let Some(max_level) = options.level {
@@ -687,7 +709,7 @@ fn display_virtual_entries<W: Write>(
         }
 
         // Display entry
-        display_virtual_entry(writer, entry, options, indent_state, is_last)?;
+        display_virtual_entry(writer, entry, options, indent_state, is_last, icon_manager)?;
 
         // Recurse into directories
         if entry.is_dir {
@@ -702,6 +724,7 @@ fn display_virtual_entries<W: Write>(
                     stats,
                     &new_indent_state,
                     depth + 1,
+                    icon_manager,
                 )?;
             }
         }
@@ -716,6 +739,7 @@ fn display_virtual_entry<W: Write>(
     options: &TreeOptions,
     indent_state: &[bool],
     is_last: bool,
+    icon_manager: &IconManager,
 ) -> std::io::Result<()> {
     // Build prefix
     let mut prefix = String::new();
@@ -748,6 +772,13 @@ fn display_virtual_entry<W: Write>(
     } else {
         filename.to_string()
     };
+
+    // Add icon if enabled
+    if options.icons {
+        let path = Path::new(&entry.path);
+        let icon = icon_manager.get_icon_for_path(path);
+        display_name = format!("{} {}", icon, display_name);
+    }
 
     // Add file type indicator
     if options.classify && entry.is_dir {
