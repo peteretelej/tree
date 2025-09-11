@@ -142,6 +142,9 @@ pub struct Cli {
 
     #[arg(long = "fromfile", help = "Read listing from file/stdin")]
     pub fromfile: bool,
+
+    #[arg(long = "icons", help = "Show icons for files and directories based on their type and extension.")]
+    pub icons: bool,
 }
 
 /// Convert CLI arguments to TreeOptions
@@ -181,6 +184,7 @@ pub fn cli_to_options(cli: &Cli) -> Result<TreeOptions, String> {
         no_report: cli.no_report,
         print_permissions: cli.print_permissions,
         from_file: cli.fromfile,
+        icons: cli.icons,
     })
 }
 
