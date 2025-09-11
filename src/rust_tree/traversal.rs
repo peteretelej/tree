@@ -184,15 +184,15 @@ fn format_entry_line(
     } else {
         entry.file_name().to_string_lossy().to_string()
     };
-    
+
     // Add icon if enabled
     let display_name = if options.icons {
         let icon = icon_manager.get_icon_for_path(&path);
-        format!("{} {}", icon, name_part)
+        format!("{icon} {name_part}")
     } else {
         name_part
     };
-    
+
     let colored_name = if options.no_color || !options.color {
         display_name
     } else {
@@ -258,6 +258,7 @@ fn format_entry_line(
     Ok(line)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn traverse_directory<P: AsRef<Path>, W: Write>(
     writer: &mut W,
     root_path: P,
@@ -487,6 +488,7 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
 ///     no_report: false,
 ///     print_permissions: false,
 ///     from_file: false,
+///     icons: false,
 /// };
 /// let tree_output = list_directory_as_string(".", &options).unwrap();
 /// println!("{}", tree_output);
@@ -561,7 +563,7 @@ fn list_from_filesystem_with_writer<W: Write>(
 
     // Create icon manager if icons are enabled
     let icon_manager = IconManager::new();
-    
+
     // Start the recursive traversal with empty initial indent state
     traverse_directory(
         &mut writer,  // Pass the writer
@@ -642,7 +644,7 @@ fn display_virtual_tree_with_writer<W: Write>(
 
     // Create icon manager
     let icon_manager = IconManager::new();
-    
+
     // Display tree starting from root
     if let Some(root_children) = children.get("") {
         display_virtual_entries(
@@ -676,6 +678,7 @@ fn display_virtual_tree_with_writer<W: Write>(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn display_virtual_entries<W: Write>(
     writer: &mut W,
     entries: &[&FileEntry],
@@ -777,7 +780,7 @@ fn display_virtual_entry<W: Write>(
     if options.icons {
         let path = Path::new(&entry.path);
         let icon = icon_manager.get_icon_for_path(path);
-        display_name = format!("{} {}", icon, display_name);
+        display_name = format!("{icon} {display_name}");
     }
 
     // Add file type indicator

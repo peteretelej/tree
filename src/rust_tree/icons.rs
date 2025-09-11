@@ -1,5 +1,5 @@
-use std::{collections::HashMap, fs, path::Path};
 use serde::Deserialize;
+use std::{collections::HashMap, fs, path::Path};
 
 #[derive(Deserialize)]
 struct IconTheme {

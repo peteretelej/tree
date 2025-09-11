@@ -143,7 +143,10 @@ pub struct Cli {
     #[arg(long = "fromfile", help = "Read listing from file/stdin")]
     pub fromfile: bool,
 
-    #[arg(long = "icons", help = "Show icons for files and directories based on their type and extension.")]
+    #[arg(
+        long = "icons",
+        help = "Show icons for files and directories based on their type and extension."
+    )]
     pub icons: bool,
 }
 
@@ -256,6 +259,7 @@ mod tests {
             no_report: false,
             print_permissions: false,
             fromfile: false,
+            icons: false,
         };
 
         let options = cli_to_options(&cli).unwrap();
@@ -292,6 +296,7 @@ mod tests {
             no_report: true,
             print_permissions: true,
             fromfile: true,
+            icons: false,
         };
 
         let options = cli_to_options(&cli).unwrap();
@@ -342,6 +347,7 @@ mod tests {
             no_report: false,
             print_permissions: false,
             fromfile: false,
+            icons: false,
         };
 
         let result = cli_to_options(&cli);
