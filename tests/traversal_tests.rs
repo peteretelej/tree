@@ -55,6 +55,7 @@ fn create_default_options() -> TreeOptions {
         no_report: false,
         print_permissions: false,
         from_file: false,
+        icons: false,
     }
 }
 
