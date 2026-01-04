@@ -944,3 +944,67 @@ fn test_matchdirs_fromfile_prune_keeps_matched() {
         "Should not contain other (no matching content)"
     );
 }
+
+#[cfg(unix)]
+#[test]
+fn test_classify_symlink() {
+    use std::os::unix::fs::symlink;
+
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    fs::write(temp_path.join("target.txt"), "content").unwrap();
+    symlink(temp_path.join("target.txt"), temp_path.join("link.txt")).unwrap();
+
+    let mut options = create_default_options();
+    options.classify = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+    assert!(
+        output.contains("link.txt@"),
+        "Symlink should have @ indicator"
+    );
+}
+
+#[test]
+fn test_dirs_first_with_sort_by_time() {
+    let temp_dir = create_test_directory();
+    let mut options = create_default_options();
+    options.dirs_first = true;
+    options.sort_by_time = true;
+
+    let result = list_directory(temp_dir.path(), &options);
+    assert!(result.is_ok());
+}
+
+#[test]
+fn test_fromfile_dirs_first() {
+    let temp_dir = tempdir().unwrap();
+    let listing_file = temp_dir.path().join("listing.txt");
+
+    let content = "file1.txt\ndir1/\nfile2.txt\ndir2/\ndir2/nested.txt\n";
+    fs::write(&listing_file, content).unwrap();
+
+    let mut options = create_default_options();
+    options.dirs_first = true;
+    options.from_file = true;
+
+    let result = list_directory_as_string(&listing_file, &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+    let lines: Vec<&str> = output.lines().collect();
+
+    let dir1_pos = lines.iter().position(|l| l.contains("dir1"));
+    let dir2_pos = lines
+        .iter()
+        .position(|l| l.contains("dir2") && !l.contains("nested"));
+    let file1_pos = lines.iter().position(|l| l.contains("file1"));
+
+    if let (Some(d1), Some(d2), Some(f1)) = (dir1_pos, dir2_pos, file1_pos) {
+        assert!(d1 < f1 || d2 < f1, "Directories should appear before files");
+    }
+}
