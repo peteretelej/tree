@@ -104,13 +104,18 @@ fn detect_format(lines: &[String]) -> Option<FileListFormat> {
         .iter()
         .take(10)
         .filter(|line| {
-            // unzip -l format: has "Archive:" header or dashed separators
-            line.starts_with("Archive:")
-                || line.starts_with("---------")
-                || (line.contains(" ")
+            line.starts_with("Archive:") || line.starts_with("---------") || {
+                // Skip Windows paths (drive letter pattern X:)
+                if line.len() >= 2 && line.chars().nth(1) == Some(':') {
+                    return false;
+                }
+                // ZIP entry lines: indented with size as first field
+                let trimmed = line.trim_start();
+                line.len() > 40
                     && line.contains(":")
-                    && line.len() > 40
-                    && line.split_whitespace().count() >= 4)
+                    && line.split_whitespace().count() >= 4
+                    && trimmed.chars().next().is_some_and(|c| c.is_ascii_digit())
+            }
         })
         .count();
 

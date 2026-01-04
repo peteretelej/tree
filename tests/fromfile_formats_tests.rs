@@ -342,3 +342,40 @@ fn test_file_entry_directory_inference() {
     assert!(has_integration);
     assert!(has_http);
 }
+
+#[test]
+fn test_windows_paths_with_spaces_not_detected_as_zip() {
+    // Regression test for issue #39
+    // Windows paths with multiple spaces should not be detected as ZIP format
+    let windows_paths = vec![
+        r"C:\Windows\Temp\dir dir dir\directory directory".to_string(),
+        r"D:\Program Files\My App\data files\config.txt".to_string(),
+        r"E:\Users\John Doe\Documents\My Documents\file.txt".to_string(),
+    ];
+
+    let entries = parse_file_listing(windows_paths);
+
+    // Should be parsed as simple paths, not ZIP
+    // Windows drive letters get normalized (C: -> C)
+    assert!(!entries.is_empty());
+    assert!(entries.iter().any(|e| e.path.contains("dir dir dir")));
+    assert!(entries.iter().any(|e| e.path.contains("Program Files")));
+    assert!(entries.iter().any(|e| e.path.contains("John Doe")));
+}
+
+#[test]
+fn test_windows_path_with_multiple_space_segments() {
+    // Regression test for issue #39
+    // The specific case from the issue report
+    let path = vec![r"C:\Windows\Temp\dir dir dir\directory directory".to_string()];
+
+    let entries = parse_file_listing(path);
+
+    // Should produce entries, not an empty tree
+    assert!(!entries.is_empty());
+
+    // Should have the nested directory structure
+    let paths: Vec<&str> = entries.iter().map(|e| e.path.as_str()).collect();
+    assert!(paths.iter().any(|p| p.contains("dir dir dir")));
+    assert!(paths.iter().any(|p| p.contains("directory directory")));
+}
