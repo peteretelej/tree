@@ -33,6 +33,7 @@ fn create_basic_options() -> TreeOptions {
         print_permissions: false,
         from_file: false,
         icons: false,
+        prune: false,
     }
 }
 

@@ -405,6 +405,86 @@ fn test_fromfile_with_flags() {
 }
 
 #[test]
+fn test_fromfile_prune_with_pattern() {
+    let paths = "empty_dir/\nhas_txt/\nhas_txt/file.txt\nhas_txt/subdir/\nhas_txt/subdir/nested.txt\nno_txt/\nno_txt/file.rs\n";
+
+    let output = cmd()
+        .args(["--fromfile", "--prune", "--pattern", "*.txt", "."])
+        .write_stdin(paths)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    assert!(output_contains(&output, "has_txt"));
+    assert!(output_contains(&output, "file.txt"));
+    assert!(output_contains(&output, "subdir"));
+    assert!(output_contains(&output, "nested.txt"));
+    assert!(output_not_contains(&output, "empty_dir"));
+    assert!(output_not_contains(&output, "no_txt"));
+    assert!(output_not_contains(&output, "file.rs"));
+}
+
+#[test]
+fn test_fromfile_prune_with_exclude() {
+    let paths = "logs/\nlogs/app.log\nlogs/error.log\ndata/\ndata/config.txt\ndata/cache.log\n";
+
+    let output = cmd()
+        .args(["--fromfile", "--prune", "--exclude", "*.log", "."])
+        .write_stdin(paths)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    assert!(output_contains(&output, "data"));
+    assert!(output_contains(&output, "config.txt"));
+    assert!(output_not_contains(&output, "logs"));
+    assert!(output_not_contains(&output, "app.log"));
+}
+
+#[test]
+fn test_fromfile_prune_nested() {
+    let paths = "a/\na/b/\na/b/c/\na/b/c/d/\na/b/c/d/deep.txt\nempty/\n";
+
+    let output = cmd()
+        .args(["--fromfile", "--prune", "--pattern", "*.txt", "."])
+        .write_stdin(paths)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    assert!(output_contains(&output, "a"));
+    assert!(output_contains(&output, "b"));
+    assert!(output_contains(&output, "c"));
+    assert!(output_contains(&output, "d"));
+    assert!(output_contains(&output, "deep.txt"));
+    assert!(output_not_contains(&output, "empty"));
+}
+
+#[test]
+fn test_fromfile_prune_without_filter() {
+    let paths = "empty_dir/\nhas_files/\nhas_files/file.txt\n";
+
+    let output = cmd()
+        .args(["--fromfile", "--prune", "."])
+        .write_stdin(paths)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    assert!(output_contains(&output, "empty_dir"));
+    assert!(output_contains(&output, "has_files"));
+    assert!(output_contains(&output, "file.txt"));
+}
+
+#[test]
 fn test_error_handling() {
     // Test with non-existent directory - should fail with non-zero exit code
     let nonexistent_path = if cfg!(windows) {

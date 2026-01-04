@@ -32,6 +32,7 @@ fn create_test_options() -> TreeOptions {
         print_permissions: false,
         from_file: false,
         icons: false,
+        prune: false,
     }
 }
 
@@ -90,6 +91,7 @@ fn test_tree_options_defaults() {
         print_permissions: false,
         from_file: false,
         icons: false,
+        prune: false,
     };
 
     // Test default values

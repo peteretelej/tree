@@ -162,6 +162,12 @@ pub struct Cli {
         help = "Show icons for files and directories based on their type and extension."
     )]
     pub icons: bool,
+
+    #[arg(
+        long = "prune",
+        help = "Prune empty directories when using -P or -I. Has increased memory usage."
+    )]
+    pub prune: bool,
 }
 
 /// Convert CLI arguments to TreeOptions
@@ -202,6 +208,7 @@ pub fn cli_to_options(cli: &Cli) -> Result<TreeOptions, String> {
         print_permissions: cli.print_permissions,
         from_file: cli.fromfile,
         icons: cli.icons,
+        prune: cli.prune,
     })
 }
 
@@ -274,6 +281,7 @@ mod tests {
             print_permissions: false,
             fromfile: false,
             icons: false,
+            prune: false,
         };
 
         let options = cli_to_options(&cli).unwrap();
@@ -311,6 +319,7 @@ mod tests {
             print_permissions: true,
             fromfile: true,
             icons: false,
+            prune: false,
         };
 
         let options = cli_to_options(&cli).unwrap();
@@ -362,6 +371,7 @@ mod tests {
             print_permissions: false,
             fromfile: false,
             icons: false,
+            prune: false,
         };
 
         let result = cli_to_options(&cli);

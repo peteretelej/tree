@@ -27,6 +27,7 @@ Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tre
 - [x] Use ASCII characters for tree display (`-A` or `--ascii`)
 - [x] List directories only (`-d` or `--directories`)
 - [x] Exclude specific files matching patterns (`-I` or `--exclude`)
+- [x] Prune empty directories from output (`--prune`)
 - [x] Send output to filename with `-o` flag
 - [x] Do not descend directories that contain more than # entries with `--filelimit` flag
 - [x] List directories first before files with `dirsfirst` flag
@@ -97,6 +98,9 @@ For example:
 ./tree --level=2 .
 ./tree --all --full-path --size .
 ./tree --pattern="*.txt" --exclude="*.log" .
+
+# Hide directories that have no matching files
+./tree --pattern="*.txt" --exclude="*.log" --prune .
 ```
 
 ### Using as Rust Crate
