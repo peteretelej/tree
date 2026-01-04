@@ -157,29 +157,6 @@ Consider copying the `pre-push` script to your git hooks directory:
 cp scripts/pre-push .git/hooks/pre-push
 ```
 
-#### QA Testing
-
-The project includes a comprehensive Rust-based QA testing tool in [`tools/qa`](tools/qa) that validates all tree CLI features across multiple platforms using Docker containers.
-
-```bash
-# Build the QA tool
-cd tools/qa && cargo build --release
-
-# Run tests on Linux platform
-./target/release/qa test --platforms linux
-
-# Run tests on multiple platforms  
-./target/release/qa test --platforms linux,alpine
-
-# Run with verbose output for debugging
-./target/release/qa test --platforms linux --verbose
-
-# Clean up Docker resources
-./target/release/qa clean
-```
-
-The QA tool executes 34 comprehensive tests across 9 categories (basic functionality, file filtering, display options, sorting, etc.) in isolated Docker containers. Tests validate features as advertised in this README using only the generated binaries. See [`tools/qa/README.md`](tools/qa/README.md) for full documentation.
-
 #### VS Code Settings
 
 For VS Code users, add this to your settings.json:
