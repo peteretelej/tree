@@ -41,7 +41,7 @@ fn create_default_options() -> TreeOptions {
         print_size: false,
         human_readable: false,
         pattern_glob: None,
-        exclude_pattern: None,
+        exclude_patterns: vec![],
         color: false,
         no_color: false,
         ascii: false,
@@ -95,7 +95,7 @@ fn test_list_directory_with_pattern() {
 fn test_list_directory_exclude_pattern() {
     let temp_dir = create_test_directory();
     let mut options = create_default_options();
-    options.exclude_pattern = Some(Pattern::new("target").unwrap());
+    options.exclude_patterns = vec![Pattern::new("target").unwrap()];
 
     // Test that exclude pattern works without error
     let result = list_directory(temp_dir.path(), &options);
@@ -357,7 +357,7 @@ fn test_exclude_pattern_combinations() {
 
     for pattern_str in exclude_patterns {
         let mut options = create_default_options();
-        options.exclude_pattern = Some(Pattern::new(pattern_str).unwrap());
+        options.exclude_patterns = vec![Pattern::new(pattern_str).unwrap()];
         options.all_files = true;
 
         let result = list_directory(temp_dir.path(), &options);

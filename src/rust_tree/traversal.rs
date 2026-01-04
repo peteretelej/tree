@@ -98,8 +98,8 @@ fn should_skip_entry(
         return Ok(true);
     }
 
-    // Check exclude pattern FIRST
-    if let Some(exclude_pattern) = &options.exclude_pattern {
+    // Check exclude patterns FIRST
+    for exclude_pattern in &options.exclude_patterns {
         if file_name.is_some_and(|name| exclude_pattern.matches(name)) {
             return Ok(true);
         }
@@ -474,7 +474,7 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
 ///     print_size: false,
 ///     human_readable: false,
 ///     pattern_glob: None,
-///     exclude_pattern: None,
+///     exclude_patterns: vec![],
 ///     color: false,
 ///     no_color: false,
 ///     ascii: false,
@@ -820,8 +820,8 @@ fn should_skip_virtual_entry(entry: &FileEntry, options: &TreeOptions) -> std::i
         return Ok(true);
     }
 
-    // Check exclude pattern
-    if let Some(exclude_pattern) = &options.exclude_pattern {
+    // Check exclude patterns
+    for exclude_pattern in &options.exclude_patterns {
         if exclude_pattern.matches(filename) {
             return Ok(true);
         }

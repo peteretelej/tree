@@ -76,9 +76,9 @@ pub struct Cli {
     #[arg(
         short = 'I',
         long = "exclude",
-        help = "Do not list files that match the wild-card pattern."
+        help = "Do not list files that match the wild-card pattern. May be repeated."
     )]
-    pub exclude: Option<String>,
+    pub exclude: Vec<String>,
 
     #[arg(
         short = 'f',
@@ -172,11 +172,11 @@ pub fn cli_to_options(cli: &Cli) -> Result<TreeOptions, String> {
         .map(|pattern| parse_glob_pattern(pattern))
         .transpose()?;
 
-    let exclude_pattern: Option<Pattern> = cli
+    let exclude_patterns: Vec<Pattern> = cli
         .exclude
-        .as_ref()
+        .iter()
         .map(|pattern| parse_glob_pattern(pattern))
-        .transpose()?;
+        .collect::<Result<Vec<_>, _>>()?;
 
     Ok(TreeOptions {
         all_files: cli.all_files,
@@ -187,7 +187,7 @@ pub fn cli_to_options(cli: &Cli) -> Result<TreeOptions, String> {
         print_size: cli.print_size,
         human_readable: cli.human_readable,
         pattern_glob,
-        exclude_pattern,
+        exclude_patterns,
         color: cli.color,
         no_color: cli.no_color,
         ascii: cli.ascii,
@@ -258,7 +258,7 @@ mod tests {
             print_size: false,
             human_readable: false,
             pattern: None,
-            exclude: None,
+            exclude: vec![],
             full_path: false,
             color: false,
             no_color: false,
@@ -281,7 +281,7 @@ mod tests {
         assert!(options.level.is_none());
         assert!(!options.dir_only);
         assert!(options.pattern_glob.is_none());
-        assert!(options.exclude_pattern.is_none());
+        assert!(options.exclude_patterns.is_empty());
     }
 
     #[test]
@@ -295,7 +295,7 @@ mod tests {
             print_size: true,
             human_readable: true,
             pattern: Some("*.rs".to_string()),
-            exclude: Some("target".to_string()),
+            exclude: vec!["target".to_string()],
             full_path: true,
             color: true,
             no_color: false,
@@ -319,7 +319,7 @@ mod tests {
         assert!(options.print_size);
         assert!(options.human_readable);
         assert!(options.pattern_glob.is_some());
-        assert!(options.exclude_pattern.is_some());
+        assert!(!options.exclude_patterns.is_empty());
         assert!(options.full_path);
         assert!(options.color);
         assert!(options.ascii);
@@ -346,7 +346,7 @@ mod tests {
             print_size: false,
             human_readable: false,
             pattern: Some("[".to_string()), // Invalid pattern
-            exclude: None,
+            exclude: vec![],
             full_path: false,
             color: false,
             no_color: false,
