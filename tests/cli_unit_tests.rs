@@ -17,7 +17,7 @@ fn create_test_options() -> TreeOptions {
         print_size: true,
         human_readable: false,
         pattern_glob: Some(Pattern::new("*.rs").unwrap()),
-        exclude_pattern: Some(Pattern::new("target").unwrap()),
+        exclude_patterns: vec![Pattern::new("target").unwrap()],
         color: false,
         no_color: true,
         ascii: true,
@@ -48,7 +48,7 @@ fn test_tree_options_construction() {
     assert!(options.print_size);
     assert!(!options.human_readable);
     assert!(options.pattern_glob.is_some());
-    assert!(options.exclude_pattern.is_some());
+    assert!(!options.exclude_patterns.is_empty());
     assert!(!options.color);
     assert!(options.no_color);
     assert!(options.ascii);
@@ -75,7 +75,7 @@ fn test_tree_options_defaults() {
         print_size: false,
         human_readable: false,
         pattern_glob: None,
-        exclude_pattern: None,
+        exclude_patterns: vec![],
         color: false,
         no_color: false,
         ascii: false,
@@ -97,7 +97,7 @@ fn test_tree_options_defaults() {
     assert_eq!(options.level, None);
     assert!(!options.full_path);
     assert!(options.pattern_glob.is_none());
-    assert!(options.exclude_pattern.is_none());
+    assert!(options.exclude_patterns.is_empty());
     assert_eq!(options.output_file, None);
     assert_eq!(options.file_limit, None);
 }

@@ -166,6 +166,33 @@ fn test_cli_exclude_pattern() {
 }
 
 #[test]
+fn test_cli_multiple_exclude_patterns() {
+    let temp_dir = tempdir().unwrap();
+    fs::write(temp_dir.path().join("keep.rs"), "keep").unwrap();
+    fs::write(temp_dir.path().join("ignore.txt"), "ignore").unwrap();
+    fs::write(temp_dir.path().join("skip.md"), "skip").unwrap();
+    fs::write(temp_dir.path().join("drop.log"), "drop").unwrap();
+
+    let mut cmd = Command::cargo_bin("tree").unwrap();
+    cmd.current_dir(temp_dir.path())
+        .arg("-I")
+        .arg("*.txt")
+        .arg("-I")
+        .arg("*.md")
+        .arg("-I")
+        .arg("*.log");
+
+    let output = cmd.output().unwrap();
+    assert!(output.status.success());
+
+    let stdout_str = String::from_utf8(output.stdout).unwrap();
+    assert!(stdout_str.contains("keep.rs"));
+    assert!(!stdout_str.contains("ignore.txt"));
+    assert!(!stdout_str.contains("skip.md"));
+    assert!(!stdout_str.contains("drop.log"));
+}
+
+#[test]
 fn test_cli_ascii_mode() {
     let temp_dir = tempdir().unwrap();
     fs::create_dir(temp_dir.path().join("subdir")).unwrap();

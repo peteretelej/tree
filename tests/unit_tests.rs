@@ -18,7 +18,7 @@ fn create_basic_options() -> TreeOptions {
         print_size: false,
         human_readable: false,
         pattern_glob: None,
-        exclude_pattern: None,
+        exclude_patterns: vec![],
         color: false,
         no_color: false,
         ascii: false,
@@ -90,7 +90,7 @@ fn test_list_directory_with_patterns() {
     assert!(list_directory(temp_dir.path(), &options).is_ok());
 
     options.pattern_glob = None;
-    options.exclude_pattern = Some(Pattern::new("*.rs").unwrap());
+    options.exclude_patterns = vec![Pattern::new("*.rs").unwrap()];
     assert!(list_directory(temp_dir.path(), &options).is_ok());
 }
 

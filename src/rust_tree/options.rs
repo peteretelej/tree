@@ -9,7 +9,7 @@ pub struct TreeOptions {
     pub print_size: bool,
     pub human_readable: bool,
     pub pattern_glob: Option<Pattern>,
-    pub exclude_pattern: Option<Pattern>,
+    pub exclude_patterns: Vec<Pattern>,
     pub color: bool,
     pub no_color: bool,
     pub ascii: bool,
