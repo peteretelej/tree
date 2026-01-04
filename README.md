@@ -28,6 +28,7 @@ Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tre
 - [x] List directories only (`-d` or `--directories`)
 - [x] Exclude specific files matching patterns (`-I` or `--exclude`)
 - [x] Prune directories with no matching files when -P or -I is used (`--prune`)
+- [x] Apply -P pattern to directory names (`--matchdirs`)
 - [x] Send output to filename with `-o` flag
 - [x] Do not descend directories that contain more than # entries with `--filelimit` flag
 - [x] List directories first before files with `dirsfirst` flag
@@ -80,10 +81,11 @@ rustup default stable
 
 ## Usage
 
-## Usage
-
 ```sh
 ./tree [FLAGS] [OPTIONS] [PATH]
+
+# Get help and see all available options
+./tree --help
 ```
 
 For example:
