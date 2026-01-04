@@ -27,7 +27,7 @@ Website: [https://peteretelej.github.io/tree/](https://peteretelej.github.io/tre
 - [x] Use ASCII characters for tree display (`-A` or `--ascii`)
 - [x] List directories only (`-d` or `--directories`)
 - [x] Exclude specific files matching patterns (`-I` or `--exclude`)
-- [x] Prune empty directories from output (`--prune`)
+- [x] Prune directories with no matching files when -P or -I is used (`--prune`)
 - [x] Send output to filename with `-o` flag
 - [x] Do not descend directories that contain more than # entries with `--filelimit` flag
 - [x] List directories first before files with `dirsfirst` flag

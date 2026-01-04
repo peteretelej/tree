@@ -165,7 +165,7 @@ pub struct Cli {
 
     #[arg(
         long = "prune",
-        help = "Prune empty directories when using -P or -I. Has increased memory usage."
+        help = "Prune directories with no matching files when using -P or -I. Has increased memory usage."
     )]
     pub prune: bool,
 }
