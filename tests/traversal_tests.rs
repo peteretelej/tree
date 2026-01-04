@@ -56,6 +56,7 @@ fn create_default_options() -> TreeOptions {
         print_permissions: false,
         from_file: false,
         icons: false,
+        prune: false,
     }
 }
 
@@ -578,4 +579,119 @@ fn test_list_directory_as_string_nonexistent_path() {
 
     let result = list_directory_as_string(nonexistent_path, &options);
     assert!(result.is_err());
+}
+
+fn create_prune_test_directory() -> tempfile::TempDir {
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    fs::create_dir(temp_path.join("empty_dir")).unwrap();
+    fs::create_dir(temp_path.join("has_txt")).unwrap();
+    fs::create_dir(temp_path.join("has_txt").join("subdir")).unwrap();
+    fs::create_dir(temp_path.join("no_txt")).unwrap();
+
+    fs::write(temp_path.join("has_txt").join("file.txt"), "content").unwrap();
+    fs::write(
+        temp_path.join("has_txt").join("subdir").join("nested.txt"),
+        "nested",
+    )
+    .unwrap();
+    fs::write(temp_path.join("no_txt").join("file.rs"), "fn main() {}").unwrap();
+
+    temp_dir
+}
+
+#[test]
+fn test_prune_with_pattern() {
+    let temp_dir = create_prune_test_directory();
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("*.txt").unwrap());
+    options.prune = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+
+    assert!(output.contains("has_txt"), "Should contain has_txt dir");
+    assert!(output.contains("file.txt"), "Should contain file.txt");
+    assert!(output.contains("subdir"), "Should contain subdir");
+    assert!(output.contains("nested.txt"), "Should contain nested.txt");
+
+    assert!(
+        !output.contains("empty_dir"),
+        "Should not contain empty_dir"
+    );
+    assert!(!output.contains("no_txt"), "Should not contain no_txt dir");
+    assert!(!output.contains("file.rs"), "Should not contain file.rs");
+}
+
+#[test]
+fn test_prune_with_exclude() {
+    let temp_dir = create_prune_test_directory();
+    let mut options = create_default_options();
+    options.exclude_patterns = vec![Pattern::new("*.txt").unwrap()];
+    options.prune = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+
+    assert!(output.contains("no_txt"), "Should contain no_txt dir");
+    assert!(output.contains("file.rs"), "Should contain file.rs");
+
+    assert!(
+        !output.contains("empty_dir"),
+        "Should not contain empty_dir"
+    );
+    assert!(
+        !output.contains("has_txt"),
+        "Should not contain has_txt (all content excluded)"
+    );
+}
+
+#[test]
+fn test_prune_without_filter_has_no_effect() {
+    let temp_dir = create_prune_test_directory();
+    let mut options = create_default_options();
+    options.prune = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+
+    assert!(
+        output.contains("empty_dir"),
+        "Should contain empty_dir (no filter active)"
+    );
+    assert!(output.contains("has_txt"), "Should contain has_txt");
+    assert!(output.contains("no_txt"), "Should contain no_txt");
+}
+
+#[test]
+fn test_prune_nested_directories() {
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    fs::create_dir_all(temp_path.join("a").join("b").join("c")).unwrap();
+    fs::write(
+        temp_path.join("a").join("b").join("c").join("deep.txt"),
+        "deep",
+    )
+    .unwrap();
+    fs::create_dir(temp_path.join("empty")).unwrap();
+
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("*.txt").unwrap());
+    options.prune = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+
+    assert!(output.contains("deep.txt"), "Should contain deep.txt");
+    assert!(!output.contains("empty"), "Should not contain empty dir");
 }
