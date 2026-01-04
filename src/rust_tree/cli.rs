@@ -168,6 +168,12 @@ pub struct Cli {
         help = "Prune directories with no matching files when using -P or -I. Has increased memory usage."
     )]
     pub prune: bool,
+
+    #[arg(
+        long = "matchdirs",
+        help = "Include directory names in -P pattern matching. Matched directories show all contents."
+    )]
+    pub match_dirs: bool,
 }
 
 /// Convert CLI arguments to TreeOptions
@@ -193,6 +199,7 @@ pub fn cli_to_options(cli: &Cli) -> Result<TreeOptions, String> {
         print_size: cli.print_size,
         human_readable: cli.human_readable,
         pattern_glob,
+        match_dirs: cli.match_dirs,
         exclude_patterns,
         color: cli.color,
         no_color: cli.no_color,
@@ -282,6 +289,7 @@ mod tests {
             fromfile: false,
             icons: false,
             prune: false,
+            match_dirs: false,
         };
 
         let options = cli_to_options(&cli).unwrap();
@@ -320,6 +328,7 @@ mod tests {
             fromfile: true,
             icons: false,
             prune: false,
+            match_dirs: false,
         };
 
         let options = cli_to_options(&cli).unwrap();
@@ -372,6 +381,7 @@ mod tests {
             fromfile: false,
             icons: false,
             prune: false,
+            match_dirs: false,
         };
 
         let result = cli_to_options(&cli);

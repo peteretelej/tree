@@ -87,7 +87,7 @@ fn format_date(time: SystemTime) -> String {
 fn should_skip_entry(
     entry: &fs::DirEntry,
     options: &TreeOptions,
-    _depth: usize,
+    depth: usize,
 ) -> std::io::Result<bool> {
     let path = entry.path();
     let file_name = path.file_name().and_then(|name| name.to_str());
@@ -107,8 +107,22 @@ fn should_skip_entry(
 
     // Check include pattern (only if exclude didn't match)
     if let Some(pattern) = &options.pattern_glob {
-        if !path.is_dir() && !file_name.is_some_and(|name| pattern.matches(name)) {
-            return Ok(true);
+        // Directories are never filtered by pattern
+        if !path.is_dir() {
+            // In matchdirs mode, files at depth 1 (inside depth-0 dirs) with matching parent
+            // are shown without filtering. depth==1 means parent dir is at depth 0 (direct child of root)
+            let parent_is_depth1_match = options.match_dirs
+                && depth == 1
+                && path
+                    .parent()
+                    .and_then(|p| p.file_name())
+                    .and_then(|n| n.to_str())
+                    .is_some_and(|parent_name| pattern.matches(parent_name));
+
+            // Show file if: parent matched at depth 1 OR file matches pattern
+            if !parent_is_depth1_match && !file_name.is_some_and(|name| pattern.matches(name)) {
+                return Ok(true);
+            }
         }
     }
 
@@ -432,7 +446,16 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                     )?
                 };
 
-                if has_content {
+                // Check if this directory matches the pattern (for matchdirs mode)
+                let this_dir_matches = options.match_dirs
+                    && options.pattern_glob.as_ref().is_some_and(|pattern| {
+                        path.file_name()
+                            .and_then(|n| n.to_str())
+                            .is_some_and(|name| pattern.matches(name))
+                    });
+
+                // Include if has content OR directory matched pattern (don't prune matched dirs)
+                if has_content || this_dir_matches {
                     // Directory has matching content, include it
                     let line = format_entry_line(
                         &entry,
@@ -515,6 +538,7 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
 ///     print_size: false,
 ///     human_readable: false,
 ///     pattern_glob: None,
+///     match_dirs: false,
 ///     exclude_patterns: vec![],
 ///     color: false,
 ///     no_color: false,
@@ -745,7 +769,7 @@ fn display_virtual_entries<W: Write>(
         let is_last = i == entries.len() - 1;
 
         // Apply filters (but directories pass through for now if pruning)
-        let should_skip = should_skip_virtual_entry(entry, options)?;
+        let should_skip = should_skip_virtual_entry(entry, options, depth)?;
         if should_skip && (!entry.is_dir || !prune_mode) {
             continue;
         }
@@ -773,7 +797,20 @@ fn display_virtual_entries<W: Write>(
                     false
                 };
 
-                if has_content {
+                // Check if this directory matches the pattern (for matchdirs mode)
+                let filename = if let Some(pos) = entry.path.rfind('/') {
+                    &entry.path[pos + 1..]
+                } else {
+                    &entry.path
+                };
+                let this_dir_matches = options.match_dirs
+                    && options
+                        .pattern_glob
+                        .as_ref()
+                        .is_some_and(|pattern| pattern.matches(filename));
+
+                // Include if has content OR directory matched pattern (don't prune matched dirs)
+                if has_content || this_dir_matches {
                     display_virtual_entry(
                         writer,
                         entry,
@@ -892,7 +929,11 @@ fn display_virtual_entry<W: Write>(
     Ok(())
 }
 
-fn should_skip_virtual_entry(entry: &FileEntry, options: &TreeOptions) -> std::io::Result<bool> {
+fn should_skip_virtual_entry(
+    entry: &FileEntry,
+    options: &TreeOptions,
+    depth: usize,
+) -> std::io::Result<bool> {
     let filename = if let Some(pos) = entry.path.rfind('/') {
         &entry.path[pos + 1..]
     } else {
@@ -914,8 +955,29 @@ fn should_skip_virtual_entry(entry: &FileEntry, options: &TreeOptions) -> std::i
 
     // Check include pattern
     if let Some(include_pattern) = &options.pattern_glob {
-        if !include_pattern.matches(filename) {
-            return Ok(true);
+        // Directories are never filtered by pattern
+        if !entry.is_dir {
+            // In matchdirs mode, files at depth 1 (inside depth-0 dirs) with matching parent
+            // are shown without filtering
+            let parent_is_depth1_match = options.match_dirs && depth == 1 && {
+                // Get parent directory name from path
+                if let Some(slash_pos) = entry.path.rfind('/') {
+                    let parent_path = &entry.path[..slash_pos];
+                    let parent_name = if let Some(pos) = parent_path.rfind('/') {
+                        &parent_path[pos + 1..]
+                    } else {
+                        parent_path
+                    };
+                    include_pattern.matches(parent_name)
+                } else {
+                    false
+                }
+            };
+
+            // Show file if: parent matched at depth 1 OR file matches pattern
+            if !parent_is_depth1_match && !include_pattern.matches(filename) {
+                return Ok(true);
+            }
         }
     }
 

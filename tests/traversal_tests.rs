@@ -57,6 +57,7 @@ fn create_default_options() -> TreeOptions {
         from_file: false,
         icons: false,
         prune: false,
+        match_dirs: false,
     }
 }
 
@@ -694,4 +695,252 @@ fn test_prune_nested_directories() {
 
     assert!(output.contains("deep.txt"), "Should contain deep.txt");
     assert!(!output.contains("empty"), "Should not contain empty dir");
+}
+
+fn create_matchdirs_test_directory() -> tempfile::TempDir {
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    // Create structure matching the plan's test case:
+    // fzf_root/init.lua        (depth 2, parent matches at depth 1)
+    // fzf_root/sub/nested.lua  (depth 3, parent doesn't match at depth 1)
+    // project/fzf/plugin.lua   (depth 3, fzf matches but at depth 2)
+    fs::create_dir_all(temp_path.join("fzf_root").join("sub").join("deep")).unwrap();
+    fs::create_dir_all(temp_path.join("project").join("fzf").join("sub")).unwrap();
+
+    fs::write(temp_path.join("fzf_root").join("init.lua"), "x").unwrap();
+    fs::write(
+        temp_path.join("fzf_root").join("sub").join("nested.lua"),
+        "x",
+    )
+    .unwrap();
+    fs::write(
+        temp_path
+            .join("fzf_root")
+            .join("sub")
+            .join("deep")
+            .join("verydeep.lua"),
+        "x",
+    )
+    .unwrap();
+    fs::write(
+        temp_path.join("project").join("fzf").join("plugin.lua"),
+        "x",
+    )
+    .unwrap();
+    fs::write(
+        temp_path
+            .join("project")
+            .join("fzf")
+            .join("sub")
+            .join("nested.lua"),
+        "x",
+    )
+    .unwrap();
+
+    temp_dir
+}
+
+#[test]
+fn test_matchdirs_depth1_contents_shown() {
+    let temp_dir = create_matchdirs_test_directory();
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.match_dirs = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+
+    // fzf_root matches pattern at depth 1, so its immediate children should be shown
+    assert!(output.contains("fzf_root"), "Should contain fzf_root");
+    assert!(
+        output.contains("init.lua"),
+        "Should contain init.lua (depth 2, parent matches at depth 1)"
+    );
+}
+
+#[test]
+fn test_matchdirs_depth2_contents_not_shown() {
+    let temp_dir = create_matchdirs_test_directory();
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.match_dirs = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+
+    // fzf_root/sub/nested.lua is at depth 3, parent (sub) is at depth 2 - shouldn't be shown
+    assert!(
+        !output.contains("nested.lua"),
+        "Should not contain nested.lua (depth 3)"
+    );
+    assert!(
+        !output.contains("verydeep.lua"),
+        "Should not contain verydeep.lua (depth 4)"
+    );
+}
+
+#[test]
+fn test_matchdirs_nested_match_no_contents() {
+    let temp_dir = create_matchdirs_test_directory();
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.match_dirs = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+
+    // project/fzf matches pattern but at depth 2, not depth 1
+    // So its contents should NOT be shown unfiltered
+    assert!(output.contains("fzf"), "Should contain fzf directory");
+    assert!(
+        !output.contains("plugin.lua"),
+        "Should not contain plugin.lua (fzf at depth 2, not depth 1)"
+    );
+}
+
+#[test]
+fn test_matchdirs_all_directories_shown() {
+    let temp_dir = create_matchdirs_test_directory();
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.match_dirs = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+
+    // All directories should be shown (directories never filtered by pattern)
+    assert!(output.contains("fzf_root"), "Should contain fzf_root");
+    assert!(output.contains("project"), "Should contain project");
+    assert!(output.contains("sub"), "Should contain sub directories");
+}
+
+#[test]
+fn test_matchdirs_with_prune_keeps_matched_empty() {
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    // Create empty directory that matches pattern
+    fs::create_dir_all(temp_path.join("fzf_empty")).unwrap();
+    // Create non-matching directory with non-matching content
+    fs::create_dir_all(temp_path.join("other")).unwrap();
+    fs::write(temp_path.join("other").join("file.rs"), "x").unwrap();
+
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.match_dirs = true;
+    options.prune = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+
+    // Matched empty directory should NOT be pruned
+    assert!(
+        output.contains("fzf_empty"),
+        "Should contain fzf_empty (matched, not pruned)"
+    );
+    // Non-matching directory with non-matching content should be pruned
+    assert!(
+        !output.contains("other"),
+        "Should not contain other (no matching content)"
+    );
+}
+
+#[test]
+fn test_matchdirs_fromfile_depth1_contents_shown() {
+    let temp_dir = tempdir().unwrap();
+    let listing_file = temp_dir.path().join("listing.txt");
+
+    // Create file listing similar to filesystem test structure
+    let content = "fzf_root/\nfzf_root/init.lua\nfzf_root/sub/\nfzf_root/sub/nested.lua\nproject/\nproject/fzf/\nproject/fzf/plugin.lua\n";
+    fs::write(&listing_file, content).unwrap();
+
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.match_dirs = true;
+    options.from_file = true;
+
+    let result = list_directory_as_string(&listing_file, &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+
+    // fzf_root matches at depth 1, so init.lua should be shown
+    assert!(output.contains("fzf_root"), "Should contain fzf_root");
+    assert!(
+        output.contains("init.lua"),
+        "Should contain init.lua (parent matches at depth 1)"
+    );
+}
+
+#[test]
+fn test_matchdirs_fromfile_nested_not_shown() {
+    let temp_dir = tempdir().unwrap();
+    let listing_file = temp_dir.path().join("listing.txt");
+
+    let content = "fzf_root/\nfzf_root/init.lua\nfzf_root/sub/\nfzf_root/sub/nested.lua\nproject/\nproject/fzf/\nproject/fzf/plugin.lua\n";
+    fs::write(&listing_file, content).unwrap();
+
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.match_dirs = true;
+    options.from_file = true;
+
+    let result = list_directory_as_string(&listing_file, &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+
+    // nested.lua parent is "sub" at depth 2, should not be shown
+    assert!(
+        !output.contains("nested.lua"),
+        "Should not contain nested.lua (parent at depth 2)"
+    );
+    // plugin.lua parent is "fzf" at depth 2, should not be shown
+    assert!(
+        !output.contains("plugin.lua"),
+        "Should not contain plugin.lua (fzf at depth 2)"
+    );
+}
+
+#[test]
+fn test_matchdirs_fromfile_prune_keeps_matched() {
+    let temp_dir = tempdir().unwrap();
+    let listing_file = temp_dir.path().join("listing.txt");
+
+    // fzf_empty is empty but matches pattern
+    let content = "fzf_empty/\nother/\nother/file.rs\n";
+    fs::write(&listing_file, content).unwrap();
+
+    let mut options = create_default_options();
+    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.match_dirs = true;
+    options.prune = true;
+    options.from_file = true;
+
+    let result = list_directory_as_string(&listing_file, &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+
+    // Matched empty directory should NOT be pruned
+    assert!(
+        output.contains("fzf_empty"),
+        "Should contain fzf_empty (matched, not pruned)"
+    );
+    // Non-matching directory with non-matching content should be pruned
+    assert!(
+        !output.contains("other"),
+        "Should not contain other (no matching content)"
+    );
 }

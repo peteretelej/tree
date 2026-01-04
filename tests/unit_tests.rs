@@ -34,6 +34,7 @@ fn create_basic_options() -> TreeOptions {
         from_file: false,
         icons: false,
         prune: false,
+        match_dirs: false,
     }
 }
 

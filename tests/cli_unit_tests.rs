@@ -33,6 +33,7 @@ fn create_test_options() -> TreeOptions {
         from_file: false,
         icons: false,
         prune: false,
+        match_dirs: false,
     }
 }
 
@@ -92,6 +93,7 @@ fn test_tree_options_defaults() {
         from_file: false,
         icons: false,
         prune: false,
+        match_dirs: false,
     };
 
     // Test default values
