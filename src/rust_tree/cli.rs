@@ -13,7 +13,21 @@ pub fn parse_glob_pattern(s: &str) -> Result<Pattern, String> {
 }
 
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about = None)]
+#[command(
+    author,
+    version,
+    about,
+    long_about = None,
+    help_template = "\
+{name} {version}
+
+{about}
+Source: https://github.com/peteretelej/tree
+
+{usage-heading} {usage}
+
+{all-args}"
+)]
 pub struct Cli {
     #[arg(default_value = ".", help = "The path to the directory to list.")]
     pub path: String,
