@@ -48,12 +48,29 @@ Please feel to open PR requests in case interested in implementing some of the p
 
 You can easily download binaries for different platforms from the [Releases Page](https://github.com/peteretelej/tree/releases) (Windows, MacOS, Linux).
 
-- Download and unzip for your plaform
-- If placing in $PATH, you can rename it to avoid confusing with any other `tree` binaries
+- Download and unzip for your platform
+- Add to your PATH: place in `/usr/local/bin` or `~/.local/bin` (Unix/macOS), or add the folder to PATH (Windows)
+- Your system may have a built-in `tree` command; consider renaming this binary (e.g., `treecli`)
+
+### Install with Cargo (Rust)
+
+You can also install via crates.io (stable releases):
+
+```sh
+cargo install rust_tree --locked
+```
+
+Or from GitHub (latest development version):
+
+```sh
+cargo install --git https://github.com/peteretelej/tree.git --locked
+```
+
+The binary will be installed as `tree` in `~/.cargo/bin/`.
 
 ### Build from Source
 
-If you have Rust and Cargo installed, you can build the project by running:
+Alternatively, if you have Rust and Cargo installed, you can build the project by running:
 
 ```sh
 git clone https://github.com/peteretelej/tree.git
