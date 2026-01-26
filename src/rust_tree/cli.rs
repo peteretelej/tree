@@ -69,7 +69,7 @@ pub struct Cli {
     #[arg(
         short = 'P',
         long = "pattern",
-        help = "List only those files that match the wild-card pattern."
+        help = "List and highlight only those files that match the wild-card pattern (disable highlight if --no-color is used)."
     )]
     pub pattern: Option<String>,
 
@@ -171,7 +171,7 @@ pub struct Cli {
 
     #[arg(
         long = "matchdirs",
-        help = "Include directory names in -P pattern matching. Matched directories show all contents."
+        help = "Include directory names in -P pattern matching. Highlight matched directories and show all its contents (disable highlight if --no-color is used)."
     )]
     pub match_dirs: bool,
 }
