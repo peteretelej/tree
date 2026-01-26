@@ -20,6 +20,13 @@ use crate::rust_tree::fromfile::{
 use crate::rust_tree::options::TreeOptions;
 use crate::rust_tree::utils::bytes_to_human_readable;
 
+#[derive(Clone, Copy)]
+pub enum IndentState {
+    Normal,
+    Highlight,
+    IsParentLast,
+}
+
 // stdlib date formatting coz chrono is a pain to cross compile
 fn format_date(time: SystemTime) -> String {
     match time.duration_since(UNIX_EPOCH) {
@@ -144,8 +151,10 @@ struct EntryInfo {
 fn format_entry_line(
     entry: &fs::DirEntry,
     options: &TreeOptions,
-    indent_state: &[bool],
+    indent_state: &[IndentState],
     is_last: bool,
+    this_entry_matches: bool,
+    has_parent_matched: bool,
     icon_manager: &IconManager,
 ) -> std::io::Result<String> {
     let path = entry.path();
@@ -172,12 +181,17 @@ fn format_entry_line(
     // Indent only if not disabled and depth > 0.
     // Note: indent_state is empty when depth == 0.
     if !options.no_indent && !indent_state.is_empty() {
-        for &is_parent_last in indent_state.iter() {
-            if is_parent_last {
-                line.push_str("    ");
-            } else {
-                let vertical_line = if options.ascii { "|   " } else { "│   " };
-                line.push_str(vertical_line);
+        for indent_state in indent_state.iter() {
+            match indent_state {
+                IndentState::Normal => {
+                    let vertical_line = if options.ascii { "|   " } else { "│   " };
+                    line.push_str(vertical_line);
+                }
+                IndentState::Highlight => {
+                    let vertical_line = if options.ascii { "|   " } else { "│   " };
+                    line.push_str(&ansi_term::Colour::Red.paint(vertical_line).to_string());
+                }
+                IndentState::IsParentLast => line.push_str("    "),
             }
         }
     }
@@ -187,10 +201,14 @@ fn format_entry_line(
         (true, _, _) => "",
         (false, true, true) => "+---",
         (false, true, false) => "└── ",
-        (false, false, true) => "\\---",
+        (false, false, true) => "|---",
         (false, false, false) => "├── ",
     };
-    line.push_str(line_prefix);
+    if has_parent_matched && !options.no_color {
+        line.push_str(&ansi_term::Colour::Red.paint(line_prefix).to_string());
+    } else {
+        line.push_str(line_prefix);
+    }
 
     // --- Name (potentially colored) ---
     let name_part = if options.full_path {
@@ -207,7 +225,9 @@ fn format_entry_line(
         name_part
     };
 
-    let colored_name = if options.no_color || !options.color {
+    let colored_name = if this_entry_matches && !options.no_color {
+        ansi_term::Colour::Red.paint(&display_name).to_string()
+    } else if options.no_color || !options.color {
         display_name
     } else {
         colorize(entry, &display_name)
@@ -284,7 +304,8 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
     options: &TreeOptions,
     depth: usize,
     stats: &mut (u64, u64),
-    indent_state: &[bool],
+    indent_state: &[IndentState],
+    has_parent_matches: bool,
     icon_manager: &IconManager,
 ) -> std::io::Result<bool> {
     // --- 1. Read and Pre-process Directory Entries ---
@@ -424,12 +445,29 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                 }
             }
 
+            // Check if this directory matches the pattern (for matchdirs mode)
+            let this_dir_matches = options.match_dirs
+                && options.pattern_glob.as_ref().is_some_and(|pattern| {
+                    path.file_name()
+                        .and_then(|n| n.to_str())
+                        .is_some_and(|name| pattern.matches(name))
+                });
+
             if prune_mode {
                 // In prune mode: recurse first to check if directory has content
                 let mut child_buffer: Vec<u8> = Vec::new();
                 let mut child_stats = (0u64, 0u64);
+
+                let next_indent = if is_entry_last {
+                    IndentState::IsParentLast
+                } else if has_parent_matches && !options.no_color {
+                    IndentState::Highlight
+                } else {
+                    IndentState::Normal
+                };
+
                 let mut next_indent_state = indent_state.to_vec();
-                next_indent_state.push(is_entry_last);
+                next_indent_state.push(next_indent);
 
                 let has_content = if skip_recursion {
                     false
@@ -442,17 +480,10 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                         depth + 1,
                         &mut child_stats,
                         &next_indent_state,
+                        has_parent_matches || this_dir_matches,
                         icon_manager,
                     )?
                 };
-
-                // Check if this directory matches the pattern (for matchdirs mode)
-                let this_dir_matches = options.match_dirs
-                    && options.pattern_glob.as_ref().is_some_and(|pattern| {
-                        path.file_name()
-                            .and_then(|n| n.to_str())
-                            .is_some_and(|name| pattern.matches(name))
-                    });
 
                 // Include if has content OR directory matched pattern (don't prune matched dirs)
                 if has_content || this_dir_matches {
@@ -462,6 +493,8 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                         options,
                         indent_state,
                         is_entry_last,
+                        this_dir_matches,
+                        has_parent_matches,
                         icon_manager,
                     )?;
                     writeln!(writer, "{line}")?;
@@ -472,15 +505,30 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                 }
             } else {
                 // Normal mode: print directory then recurse
-                let line =
-                    format_entry_line(&entry, options, indent_state, is_entry_last, icon_manager)?;
+                let line = format_entry_line(
+                    &entry,
+                    options,
+                    indent_state,
+                    is_entry_last,
+                    this_dir_matches,
+                    has_parent_matches,
+                    icon_manager,
+                )?;
                 writeln!(writer, "{line}")?;
                 stats.0 += 1;
                 found_content = true;
 
                 if !skip_recursion {
+                    let next_indent = if is_entry_last {
+                        IndentState::IsParentLast
+                    } else if has_parent_matches && !options.no_color {
+                        IndentState::Highlight
+                    } else {
+                        IndentState::Normal
+                    };
+
                     let mut next_indent_state = indent_state.to_vec();
-                    next_indent_state.push(is_entry_last);
+                    next_indent_state.push(next_indent);
                     traverse_directory(
                         writer,
                         root_path.as_ref(),
@@ -489,14 +537,28 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                         depth + 1,
                         stats,
                         &next_indent_state,
+                        has_parent_matches || this_dir_matches,
                         icon_manager,
                     )?;
                 }
             }
         } else {
+            // Check if this file matches the pattern
+            let this_file_matches = options.pattern_glob.as_ref().is_some_and(|pattern| {
+                path.file_name()
+                    .and_then(|n| n.to_str())
+                    .is_some_and(|name| pattern.matches(name))
+            });
             // It's a file - always print (already passed filter)
-            let line =
-                format_entry_line(&entry, options, indent_state, is_entry_last, icon_manager)?;
+            let line = format_entry_line(
+                &entry,
+                options,
+                indent_state,
+                is_entry_last,
+                this_file_matches,
+                has_parent_matches,
+                icon_manager,
+            )?;
             writeln!(writer, "{line}")?;
             stats.1 += 1;
             found_content = true;
@@ -638,7 +700,8 @@ fn list_from_filesystem_with_writer<W: Write>(
         options,
         0, // Initial depth for root's contents
         &mut stats,
-        &[], // Initial empty indent state
+        &[],   // Initial empty indent state
+        false, // Initial parent doesn't matches
         &icon_manager,
     )?;
 
