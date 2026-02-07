@@ -87,46 +87,29 @@ fn format_date(time: SystemTime) -> String {
 fn should_skip_entry(
     entry: &fs::DirEntry,
     options: &TreeOptions,
-    depth: usize,
+    parent_matched: bool,
 ) -> std::io::Result<bool> {
     let path = entry.path();
     let file_name = path.file_name().and_then(|name| name.to_str());
 
-    // Check if hidden
     let is_hidden = file_name.map(|name| name.starts_with('.')).unwrap_or(false);
     if !options.all_files && is_hidden {
         return Ok(true);
     }
 
-    // Check exclude patterns FIRST
     for exclude_pattern in &options.exclude_patterns {
         if file_name.is_some_and(|name| exclude_pattern.matches(name)) {
             return Ok(true);
         }
     }
 
-    // Check include pattern (only if exclude didn't match)
     if let Some(pattern) = &options.pattern_glob {
-        // Directories are never filtered by pattern
-        if !path.is_dir() {
-            // In matchdirs mode, files at depth 1 (inside depth-0 dirs) with matching parent
-            // are shown without filtering. depth==1 means parent dir is at depth 0 (direct child of root)
-            let parent_is_depth1_match = options.match_dirs
-                && depth == 1
-                && path
-                    .parent()
-                    .and_then(|p| p.file_name())
-                    .and_then(|n| n.to_str())
-                    .is_some_and(|parent_name| pattern.matches(parent_name));
-
-            // Show file if: parent matched at depth 1 OR file matches pattern
-            if !parent_is_depth1_match && !file_name.is_some_and(|name| pattern.matches(name)) {
-                return Ok(true);
-            }
+        if !path.is_dir() && !parent_matched && !file_name.is_some_and(|name| pattern.matches(name))
+        {
+            return Ok(true);
         }
     }
 
-    // Check dir_only
     if options.dir_only && !path.is_dir() {
         return Ok(true);
     }
@@ -276,6 +259,36 @@ fn has_pattern_filter(options: &TreeOptions) -> bool {
     options.pattern_glob.is_some() || !options.exclude_patterns.is_empty()
 }
 
+fn should_skip_dir_recursion(path: &Path, depth: usize, options: &TreeOptions) -> bool {
+    if let Some(max_level) = options.level {
+        if (depth + 1) >= max_level as usize {
+            return true;
+        }
+    }
+    if let Some(limit) = options.file_limit {
+        match fs::read_dir(path) {
+            Ok(reader) => {
+                if reader.count() > limit as usize {
+                    return true;
+                }
+            }
+            Err(e) => {
+                eprintln!("Warning: Could not read directory {path:?} to check filelimit: {e}");
+            }
+        }
+    }
+    false
+}
+
+fn dir_matches_pattern(path: &Path, options: &TreeOptions) -> bool {
+    options.match_dirs
+        && options.pattern_glob.as_ref().is_some_and(|pattern| {
+            path.file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(|name| pattern.matches(name))
+        })
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn traverse_directory<P: AsRef<Path>, W: Write>(
     writer: &mut W,
@@ -286,16 +299,15 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
     stats: &mut (u64, u64),
     indent_state: &[bool],
     icon_manager: &IconManager,
+    parent_matched: bool,
 ) -> std::io::Result<bool> {
     // --- 1. Read and Pre-process Directory Entries ---
     let read_dir_result = fs::read_dir(current_path);
     let mut entries_info: Vec<EntryInfo> = match read_dir_result {
         Ok(reader) => reader
-            .filter_map(Result::ok) // Ignore entries that cause an error during iteration
-            .filter(|entry| {
-                // Pre-filter based on options *not* related to recursion limits (level/filelimit)
-                // This ensures stats are counted correctly even if recursion is skipped.
-                match should_skip_entry(entry, options, depth) {
+            .filter_map(Result::ok)
+            .filter(
+                |entry| match should_skip_entry(entry, options, parent_matched) {
                     Ok(skip) => !skip,
                     Err(e) => {
                         eprintln!(
@@ -303,10 +315,10 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                             entry.path(),
                             e
                         );
-                        false // Skip if error occurs during filtering
+                        false
                     }
-                }
-            })
+                },
+            )
             .map(|entry| {
                 // Get metadata/mod_time needed for sorting
                 let mod_time = entry.metadata().and_then(|m| m.modified());
@@ -384,119 +396,81 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
         }
     }
 
-    // --- 4. Iterate, Print, Count Stats, and Recurse (conditionally) ---
-    let prune_mode = options.prune && has_pattern_filter(options);
+    let prune_mode = options.prune && has_pattern_filter(options) && !options.dir_only;
     let mut found_content = false;
 
-    let last_index = entries_info.len().saturating_sub(1);
+    let surviving: Vec<bool> = if prune_mode {
+        entries_info
+            .iter()
+            .map(|info| {
+                let path = info.entry.path();
+                if info.entry.file_type()?.is_dir() {
+                    let skip = should_skip_dir_recursion(&path, depth, options);
+                    let child_matched = dir_matches_pattern(&path, options);
+                    let has_content = if skip {
+                        false
+                    } else {
+                        let mut probe_stats = (0u64, 0u64);
+                        traverse_directory(
+                            &mut io::sink(),
+                            root_path.as_ref(),
+                            &path,
+                            options,
+                            depth + 1,
+                            &mut probe_stats,
+                            &[],
+                            icon_manager,
+                            child_matched,
+                        )?
+                    };
+                    Ok(has_content || child_matched)
+                } else {
+                    Ok(true)
+                }
+            })
+            .collect::<std::io::Result<_>>()?
+    } else {
+        vec![true; entries_info.len()]
+    };
+
+    let surviving_count = surviving.iter().filter(|&&f| f).count();
+    let mut emit_idx = 0;
+
     for (index, info) in entries_info.into_iter().enumerate() {
+        if !surviving[index] {
+            continue;
+        }
         let entry = info.entry;
         let path = entry.path();
-        let is_entry_last = index == last_index;
+        let is_last = emit_idx == surviving_count.saturating_sub(1);
+        emit_idx += 1;
 
         if entry.file_type()?.is_dir() {
-            // --- Check limits specifically for this directory before recursion ---
-            let mut skip_recursion = false;
+            let skip_recursion = should_skip_dir_recursion(&path, depth, options);
+            let child_parent_matched = dir_matches_pattern(&path, options);
 
-            // 1. Check level limit for the *next* level
-            if let Some(max_level) = options.level {
-                if (depth + 1) >= max_level as usize {
-                    skip_recursion = true;
-                }
-            }
+            let line = format_entry_line(&entry, options, indent_state, is_last, icon_manager)?;
+            writeln!(writer, "{line}")?;
+            stats.0 += 1;
+            found_content = true;
 
-            // 2. Check file limit (only if level limit doesn't already skip)
             if !skip_recursion {
-                if let Some(limit) = options.file_limit {
-                    match fs::read_dir(&path) {
-                        Ok(reader) => {
-                            let entry_count = reader.count();
-                            if entry_count > limit as usize {
-                                skip_recursion = true;
-                            }
-                        }
-                        Err(e) => {
-                            eprintln!(
-                                "Warning: Could not read directory {path:?} to check filelimit: {e}"
-                            );
-                        }
-                    }
-                }
-            }
-
-            if prune_mode {
-                // In prune mode: recurse first to check if directory has content
-                let mut child_buffer: Vec<u8> = Vec::new();
-                let mut child_stats = (0u64, 0u64);
                 let mut next_indent_state = indent_state.to_vec();
-                next_indent_state.push(is_entry_last);
-
-                let has_content = if skip_recursion {
-                    false
-                } else {
-                    traverse_directory(
-                        &mut child_buffer,
-                        root_path.as_ref(),
-                        &path,
-                        options,
-                        depth + 1,
-                        &mut child_stats,
-                        &next_indent_state,
-                        icon_manager,
-                    )?
-                };
-
-                // Check if this directory matches the pattern (for matchdirs mode)
-                let this_dir_matches = options.match_dirs
-                    && options.pattern_glob.as_ref().is_some_and(|pattern| {
-                        path.file_name()
-                            .and_then(|n| n.to_str())
-                            .is_some_and(|name| pattern.matches(name))
-                    });
-
-                // Include if has content OR directory matched pattern (don't prune matched dirs)
-                if has_content || this_dir_matches {
-                    // Directory has matching content, include it
-                    let line = format_entry_line(
-                        &entry,
-                        options,
-                        indent_state,
-                        is_entry_last,
-                        icon_manager,
-                    )?;
-                    writeln!(writer, "{line}")?;
-                    writer.write_all(&child_buffer)?;
-                    stats.0 += 1 + child_stats.0;
-                    stats.1 += child_stats.1;
-                    found_content = true;
-                }
-            } else {
-                // Normal mode: print directory then recurse
-                let line =
-                    format_entry_line(&entry, options, indent_state, is_entry_last, icon_manager)?;
-                writeln!(writer, "{line}")?;
-                stats.0 += 1;
-                found_content = true;
-
-                if !skip_recursion {
-                    let mut next_indent_state = indent_state.to_vec();
-                    next_indent_state.push(is_entry_last);
-                    traverse_directory(
-                        writer,
-                        root_path.as_ref(),
-                        &path,
-                        options,
-                        depth + 1,
-                        stats,
-                        &next_indent_state,
-                        icon_manager,
-                    )?;
-                }
+                next_indent_state.push(is_last);
+                traverse_directory(
+                    writer,
+                    root_path.as_ref(),
+                    &path,
+                    options,
+                    depth + 1,
+                    stats,
+                    &next_indent_state,
+                    icon_manager,
+                    child_parent_matched,
+                )?;
             }
         } else {
-            // It's a file - always print (already passed filter)
-            let line =
-                format_entry_line(&entry, options, indent_state, is_entry_last, icon_manager)?;
+            let line = format_entry_line(&entry, options, indent_state, is_last, icon_manager)?;
             writeln!(writer, "{line}")?;
             stats.1 += 1;
             found_content = true;
@@ -630,35 +604,37 @@ fn list_from_filesystem_with_writer<W: Write>(
     // Create icon manager if icons are enabled
     let icon_manager = IconManager::new();
 
-    // Start the recursive traversal with empty initial indent state
     traverse_directory(
-        &mut writer,  // Pass the writer
-        current_path, // Use original path for root comparison
+        &mut writer,
+        current_path,
         current_path,
         options,
-        0, // Initial depth for root's contents
+        0,
         &mut stats,
-        &[], // Initial empty indent state
+        &[],
         &icon_manager,
+        false,
     )?;
 
-    // Print summary only if --noreport is not set
     if !options.no_report {
-        //println!("\n{} directories, {} files", stats.0, stats.1);
         let dir_str = if stats.0 == 1 {
             "directory"
         } else {
             "directories"
         };
-        let file_str = if stats.1 == 1 { "file" } else { "files" };
-        writeln!(
-            writer,
-            "\n{} {}, {} {}",
-            stats.0, dir_str, stats.1, file_str
-        )?;
+        if options.dir_only {
+            writeln!(writer, "\n{} {}", stats.0, dir_str)?;
+        } else {
+            let file_str = if stats.1 == 1 { "file" } else { "files" };
+            writeln!(
+                writer,
+                "\n{} {}, {} {}",
+                stats.0, dir_str, stats.1, file_str
+            )?;
+        }
     }
 
-    writer.flush()?; // Explicitly flush the buffer
+    writer.flush()?;
     Ok(())
 }
 
@@ -722,22 +698,26 @@ fn display_virtual_tree_with_writer<W: Write>(
             &[],
             0,
             &icon_manager,
+            false,
         )?;
     }
 
-    // Print summary only if --noreport is not set
     if !options.no_report {
         let dir_str = if stats.0 == 1 {
             "directory"
         } else {
             "directories"
         };
-        let file_str = if stats.1 == 1 { "file" } else { "files" };
-        writeln!(
-            writer,
-            "\n{} {}, {} {}",
-            stats.0, dir_str, stats.1, file_str
-        )?;
+        if options.dir_only {
+            writeln!(writer, "\n{} {}", stats.0, dir_str)?;
+        } else {
+            let file_str = if stats.1 == 1 { "file" } else { "files" };
+            writeln!(
+                writer,
+                "\n{} {}, {} {}",
+                stats.0, dir_str, stats.1, file_str
+            )?;
+        }
     }
 
     writer.flush()?;
@@ -754,104 +734,103 @@ fn display_virtual_entries<W: Write>(
     indent_state: &[bool],
     depth: usize,
     icon_manager: &IconManager,
+    parent_matched: bool,
 ) -> std::io::Result<bool> {
-    // Check level limit
     if let Some(max_level) = options.level {
         if depth >= max_level as usize {
             return Ok(false);
         }
     }
 
-    let prune_mode = options.prune && has_pattern_filter(options);
+    let prune_mode = options.prune && has_pattern_filter(options) && !options.dir_only;
     let mut found_content = false;
 
-    for (i, entry) in entries.iter().enumerate() {
-        let is_last = i == entries.len() - 1;
-
-        // Apply filters (but directories pass through for now if pruning)
-        let should_skip = should_skip_virtual_entry(entry, options, depth)?;
-        if should_skip && (!entry.is_dir || !prune_mode) {
-            continue;
-        }
-
-        if entry.is_dir {
-            if prune_mode {
-                // In prune mode: check if directory has content first
-                let mut child_buffer: Vec<u8> = Vec::new();
-                let mut child_stats = (0u32, 0u32);
-                let mut new_indent_state = indent_state.to_vec();
-                new_indent_state.push(!is_last);
-
-                let has_content = if let Some(children) = all_children.get(&entry.path) {
-                    display_virtual_entries(
-                        &mut child_buffer,
-                        children,
-                        all_children,
-                        options,
-                        &mut child_stats,
-                        &new_indent_state,
-                        depth + 1,
-                        icon_manager,
-                    )?
-                } else {
-                    false
-                };
-
-                // Check if this directory matches the pattern (for matchdirs mode)
+    let surviving: Vec<bool> = entries
+        .iter()
+        .map(|entry| {
+            if entry.is_dir && prune_mode {
+                if should_skip_virtual_entry(entry, options, parent_matched)? {
+                    return Ok(false);
+                }
                 let filename = if let Some(pos) = entry.path.rfind('/') {
                     &entry.path[pos + 1..]
                 } else {
                     &entry.path
                 };
-                let this_dir_matches = options.match_dirs
+                let child_matched = options.match_dirs
                     && options
                         .pattern_glob
                         .as_ref()
                         .is_some_and(|pattern| pattern.matches(filename));
-
-                // Include if has content OR directory matched pattern (don't prune matched dirs)
-                if has_content || this_dir_matches {
-                    display_virtual_entry(
-                        writer,
-                        entry,
-                        options,
-                        indent_state,
-                        is_last,
-                        icon_manager,
-                    )?;
-                    writer.write_all(&child_buffer)?;
-                    stats.0 += 1 + child_stats.0;
-                    stats.1 += child_stats.1;
-                    found_content = true;
-                }
-            } else {
-                // Normal mode
-                stats.0 += 1;
-                display_virtual_entry(writer, entry, options, indent_state, is_last, icon_manager)?;
-                found_content = true;
-
-                if let Some(children) = all_children.get(&entry.path) {
-                    let mut new_indent_state = indent_state.to_vec();
-                    new_indent_state.push(!is_last);
+                let has_content = if let Some(children) = all_children.get(&entry.path) {
+                    let mut probe_stats = (0u32, 0u32);
                     display_virtual_entries(
-                        writer,
+                        &mut io::sink(),
                         children,
                         all_children,
                         options,
-                        stats,
-                        &new_indent_state,
+                        &mut probe_stats,
+                        &[],
                         depth + 1,
                         icon_manager,
-                    )?;
-                }
+                        child_matched,
+                    )?
+                } else {
+                    false
+                };
+                Ok(has_content || child_matched)
+            } else {
+                let should_skip = should_skip_virtual_entry(entry, options, parent_matched)?;
+                Ok(!should_skip)
+            }
+        })
+        .collect::<std::io::Result<_>>()?;
+
+    let surviving_count = surviving.iter().filter(|&&f| f).count();
+    let mut emit_idx = 0;
+
+    for (i, entry) in entries.iter().enumerate() {
+        if !surviving[i] {
+            continue;
+        }
+        let is_last = emit_idx == surviving_count.saturating_sub(1);
+        emit_idx += 1;
+
+        if entry.is_dir {
+            let filename = if let Some(pos) = entry.path.rfind('/') {
+                &entry.path[pos + 1..]
+            } else {
+                &entry.path
+            };
+            let child_parent_matched = options.match_dirs
+                && options
+                    .pattern_glob
+                    .as_ref()
+                    .is_some_and(|pattern| pattern.matches(filename));
+
+            stats.0 += 1;
+            display_virtual_entry(writer, entry, options, indent_state, is_last, icon_manager)?;
+            found_content = true;
+
+            if let Some(children) = all_children.get(&entry.path) {
+                let mut new_indent_state = indent_state.to_vec();
+                new_indent_state.push(!is_last);
+                display_virtual_entries(
+                    writer,
+                    children,
+                    all_children,
+                    options,
+                    stats,
+                    &new_indent_state,
+                    depth + 1,
+                    icon_manager,
+                    child_parent_matched,
+                )?;
             }
         } else {
-            // File - display if it passed filter
-            if !should_skip {
-                stats.1 += 1;
-                display_virtual_entry(writer, entry, options, indent_state, is_last, icon_manager)?;
-                found_content = true;
-            }
+            stats.1 += 1;
+            display_virtual_entry(writer, entry, options, indent_state, is_last, icon_manager)?;
+            found_content = true;
         }
     }
 
@@ -932,7 +911,7 @@ fn display_virtual_entry<W: Write>(
 fn should_skip_virtual_entry(
     entry: &FileEntry,
     options: &TreeOptions,
-    depth: usize,
+    parent_matched: bool,
 ) -> std::io::Result<bool> {
     let filename = if let Some(pos) = entry.path.rfind('/') {
         &entry.path[pos + 1..]
@@ -940,48 +919,23 @@ fn should_skip_virtual_entry(
         &entry.path
     };
 
-    // Check if hidden
     let is_hidden = filename.starts_with('.');
     if !options.all_files && is_hidden {
         return Ok(true);
     }
 
-    // Check exclude patterns
     for exclude_pattern in &options.exclude_patterns {
         if exclude_pattern.matches(filename) {
             return Ok(true);
         }
     }
 
-    // Check include pattern
     if let Some(include_pattern) = &options.pattern_glob {
-        // Directories are never filtered by pattern
-        if !entry.is_dir {
-            // In matchdirs mode, files at depth 1 (inside depth-0 dirs) with matching parent
-            // are shown without filtering
-            let parent_is_depth1_match = options.match_dirs && depth == 1 && {
-                // Get parent directory name from path
-                if let Some(slash_pos) = entry.path.rfind('/') {
-                    let parent_path = &entry.path[..slash_pos];
-                    let parent_name = if let Some(pos) = parent_path.rfind('/') {
-                        &parent_path[pos + 1..]
-                    } else {
-                        parent_path
-                    };
-                    include_pattern.matches(parent_name)
-                } else {
-                    false
-                }
-            };
-
-            // Show file if: parent matched at depth 1 OR file matches pattern
-            if !parent_is_depth1_match && !include_pattern.matches(filename) {
-                return Ok(true);
-            }
+        if !entry.is_dir && !parent_matched && !include_pattern.matches(filename) {
+            return Ok(true);
         }
     }
 
-    // Check directories only
     if options.dir_only && !entry.is_dir {
         return Ok(true);
     }

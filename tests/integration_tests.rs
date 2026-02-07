@@ -485,6 +485,50 @@ fn test_fromfile_prune_without_filter() {
 }
 
 #[test]
+fn test_fromfile_prune_filters_hidden_dirs() {
+    let paths = ".hidden/\n.hidden/match.txt\nvisible/\nvisible/match.txt\n";
+
+    let output = cmd()
+        .args(["--fromfile", "--prune", "--pattern", "*.txt", "."])
+        .write_stdin(paths)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    assert!(output_contains(&output, "visible"));
+    assert!(output_contains(&output, "match.txt"));
+    assert!(output_not_contains(&output, ".hidden"));
+}
+
+#[test]
+fn test_fromfile_prune_filters_excluded_dirs() {
+    let paths = "cache/\ncache/data.txt\nsrc/\nsrc/data.txt\n";
+
+    let output = cmd()
+        .args([
+            "--fromfile",
+            "--prune",
+            "--pattern",
+            "*.txt",
+            "--exclude",
+            "cache",
+            ".",
+        ])
+        .write_stdin(paths)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    assert!(output_contains(&output, "src"));
+    assert!(output_contains(&output, "data.txt"));
+    assert!(output_not_contains(&output, "cache"));
+}
+
+#[test]
 fn test_error_handling() {
     // Test with non-existent directory - should fail with non-zero exit code
     let nonexistent_path = if cfg!(windows) {
