@@ -1,6 +1,8 @@
+use rstest::rstest;
 use rust_tree::rust_tree::fromfile::{
-    parse_tar_line, parse_tar_listing, parse_tar_simple_line, parse_tar_verbose_line,
-    parse_zip_listing, parse_zip_simple_line, parse_zip_verbose_line,
+    normalize_path, parse_7z_line, parse_rar_line, parse_tar_line, parse_tar_listing,
+    parse_tar_simple_line, parse_tar_verbose_line, parse_zip_listing, parse_zip_simple_line,
+    parse_zip_verbose_line,
 };
 
 #[test]
@@ -175,4 +177,144 @@ fn test_parse_zip_listing() {
     let main_file = entries.iter().find(|e| e.path == "src/main.rs");
     assert!(main_file.is_some());
     assert!(!main_file.unwrap().is_dir);
+}
+
+// -- 7z parser tests --
+
+#[test]
+fn test_parse_7z_line_file() {
+    let line = "2025-07-26 19:58:52 ....A            9            5  test_7z/file1.txt";
+    let entry = parse_7z_line(line).unwrap();
+    assert_eq!(entry.path, "test_7z/file1.txt");
+    assert!(!entry.is_dir);
+    assert_eq!(entry.size, Some(9));
+}
+
+#[test]
+fn test_parse_7z_line_directory() {
+    let line = "2025-07-26 19:58:52 D....            0            0  test_7z";
+    let entry = parse_7z_line(line).unwrap();
+    assert_eq!(entry.path, "test_7z");
+    assert!(entry.is_dir);
+    assert_eq!(entry.size, None);
+}
+
+#[test]
+fn test_parse_7z_line_5_field() {
+    let line = "2025-07-26 19:58:52 ....A            9  file.txt";
+    let entry = parse_7z_line(line).unwrap();
+    assert_eq!(entry.path, "file.txt");
+    assert!(!entry.is_dir);
+    assert_eq!(entry.size, Some(9));
+}
+
+#[rstest]
+#[case::empty("")]
+#[case::short("foo bar")]
+#[case::no_date("notadate 19:58:52 ....A 9 5 file.txt")]
+#[case::summary_line("2025-07-26 19:58:52 1234 9 5 file.txt")]
+#[case::header_7z("7-Zip [64] 16.02 : Copyright")]
+#[case::listing_archive("Listing archive: test.7z")]
+#[case::separator_dashes("------- ----------- ----------- ----------")]
+fn test_parse_7z_line_none(#[case] line: &str) {
+    assert!(parse_7z_line(line).is_none());
+}
+
+// -- RAR parser tests --
+
+#[test]
+fn test_parse_rar_line_simple_file() {
+    let line = " -rw-rw-r--         9  2025-07-26 21:18  test_rar/file1.txt";
+    let entry = parse_rar_line(line).unwrap();
+    assert_eq!(entry.path, "test_rar/file1.txt");
+    assert!(!entry.is_dir);
+    assert_eq!(entry.size, Some(9));
+}
+
+#[test]
+fn test_parse_rar_line_simple_directory() {
+    let line = " drwxrwxr-x         0  2025-07-26 21:18  test_rar/";
+    let entry = parse_rar_line(line).unwrap();
+    assert_eq!(entry.path, "test_rar");
+    assert!(entry.is_dir);
+}
+
+#[test]
+fn test_parse_rar_line_verbose_file() {
+    let line =
+        " -rw-rw-r--         9         5  56%  2025-07-26 21:18  3E4D359A  test_rar/file1.txt";
+    let entry = parse_rar_line(line).unwrap();
+    assert_eq!(entry.path, "test_rar/file1.txt");
+    assert!(!entry.is_dir);
+    assert_eq!(entry.size, Some(9));
+}
+
+#[test]
+fn test_parse_rar_line_verbose_directory() {
+    let line = " drwxrwxr-x         0         0   0%  2025-07-26 21:18  00000000  test_rar/";
+    let entry = parse_rar_line(line).unwrap();
+    assert_eq!(entry.path, "test_rar");
+    assert!(entry.is_dir);
+}
+
+#[rstest]
+#[case::empty("")]
+#[case::header("RAR 5.50 - Unrar")]
+#[case::separator("-----------  --------  ----")]
+#[case::summary_digits("     123     456   100%")]
+fn test_parse_rar_line_none(#[case] line: &str) {
+    assert!(parse_rar_line(line).is_none());
+}
+
+// -- normalize_path tests --
+
+#[rstest]
+#[case::forward_slashes("src/main.rs", "src/main.rs")]
+#[case::backslashes("src\\main.rs", "src/main.rs")]
+#[case::drive_letter("C:\\Users\\file.txt", "C/Users/file.txt")]
+#[case::leading_dot_slash("./src/main.rs", "src/main.rs")]
+#[case::leading_dot_backslash(".\\src\\main.rs", "src/main.rs")]
+#[case::simple_filename("file.txt", "file.txt")]
+fn test_normalize_path(#[case] input: &str, #[case] expected: &str) {
+    assert_eq!(normalize_path(input), expected);
+}
+
+#[test]
+fn test_parsers_strip_trailing_slash_from_directories() {
+    let cases: Vec<(
+        &str,
+        fn(&str) -> Option<rust_tree::rust_tree::fromfile::FileEntry>,
+    )> = vec![
+        (
+            "drwxr-xr-x user/group        0 2025-07-26 21:18 testdir/",
+            parse_tar_verbose_line,
+        ),
+        ("testdir/", parse_tar_simple_line),
+        (
+            "        0  2025-07-26 19:41   testdir/",
+            parse_zip_simple_line,
+        ),
+        (
+            "       0  Stored        0   0% 2025-07-26 19:41 00000000  testdir/",
+            parse_zip_verbose_line,
+        ),
+        (
+            "2025-07-26 19:58:52 D....            0            0  testdir/",
+            parse_7z_line,
+        ),
+        (
+            " drwxrwxr-x         0  2025-07-26 21:18  testdir/",
+            parse_rar_line,
+        ),
+    ];
+
+    for (input, parser) in cases {
+        let entry = parser(input).unwrap_or_else(|| panic!("parser failed on: {input}"));
+        assert!(entry.is_dir, "expected is_dir=true for: {input}");
+        assert!(
+            !entry.path.ends_with('/'),
+            "parser returned trailing slash for: {input} -> {:?}",
+            entry.path
+        );
+    }
 }

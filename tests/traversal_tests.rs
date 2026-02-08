@@ -1,11 +1,10 @@
-// Comprehensive tests for traversal.rs
-// Tests date formatting, filtering, sorting, and advanced traversal features
-
 use glob::Pattern;
+use rstest::rstest;
 use rust_tree::rust_tree::options::TreeOptions;
 use rust_tree::rust_tree::traversal::{list_directory, list_directory_as_string};
 use std::fs;
 use std::io::Write;
+use std::path::PathBuf;
 use tempfile::{tempdir, NamedTempFile};
 
 // Helper function to create a temporary directory structure for testing
@@ -1283,4 +1282,305 @@ fn test_fromfile_dirs_first() {
     if let (Some(d1), Some(d2), Some(f1)) = (dir1_pos, dir2_pos, file1_pos) {
         assert!(d1 < f1 || d2 < f1, "Directories should appear before files");
     }
+}
+
+fn fromfile_listing() -> (tempfile::TempDir, PathBuf) {
+    let temp_dir = tempdir().unwrap();
+    let listing_file = temp_dir.path().join("listing.txt");
+    let content = "\
+dir1/
+dir1/file1.rs
+dir1/file2.txt
+dir1/sub/
+dir1/sub/nested.rs
+dir2/
+dir2/archive.zip
+dir2/image.png
+dir2/readme
+file_root.log
+";
+    fs::write(&listing_file, content).unwrap();
+    (temp_dir, listing_file)
+}
+
+fn fromfile_options() -> TreeOptions {
+    let mut options = create_default_options();
+    options.from_file = true;
+    options
+}
+
+#[rstest]
+#[case::icons("icons")]
+#[case::classify("classify")]
+#[case::full_path("full_path")]
+#[case::ascii("ascii")]
+#[case::no_indent("no_indent")]
+#[case::level_1("level_1")]
+fn test_virtual_tree_display_options(#[case] option_name: &str) {
+    let (_td, listing_file) = fromfile_listing();
+    let mut options = fromfile_options();
+
+    match option_name {
+        "icons" => options.icons = true,
+        "classify" => options.classify = true,
+        "full_path" => options.full_path = true,
+        "ascii" => options.ascii = true,
+        "no_indent" => options.no_indent = true,
+        "level_1" => options.level = Some(1),
+        _ => unreachable!(),
+    }
+
+    let output = list_directory_as_string(&listing_file, &options).unwrap();
+
+    match option_name {
+        "icons" => {
+            assert!(output.contains("dir1"), "Should contain dir1");
+            assert!(output.contains("file1.rs"), "Should contain file1.rs");
+        }
+        "classify" => {
+            assert!(output.contains("dir1/"), "Dirs should get trailing /");
+            assert!(output.contains("dir2/"), "Dirs should get trailing /");
+            assert!(output.contains("sub/"), "Nested dir should get trailing /");
+        }
+        "full_path" => {
+            assert!(
+                output.contains("dir1/file1.rs"),
+                "Should show full path dir1/file1.rs"
+            );
+            assert!(
+                output.contains("dir1/sub/nested.rs"),
+                "Should show full path dir1/sub/nested.rs"
+            );
+        }
+        "ascii" => {
+            assert!(
+                output.contains("|--") || output.contains("`--"),
+                "Should use ASCII connectors"
+            );
+            assert!(
+                !output.contains("\u{251c}") && !output.contains("\u{2514}"),
+                "Should not contain Unicode connectors"
+            );
+        }
+        "no_indent" => {
+            assert!(
+                !output.contains("|--") && !output.contains("\u{251c}"),
+                "Should not have tree connectors"
+            );
+            assert!(
+                !output.contains("`--") && !output.contains("\u{2514}"),
+                "Should not have tree connectors"
+            );
+        }
+        "level_1" => {
+            assert!(output.contains("dir1"), "Top-level dir1 should be present");
+            assert!(output.contains("dir2"), "Top-level dir2 should be present");
+            assert!(
+                output.contains("file_root.log"),
+                "Top-level file should be present"
+            );
+            assert!(
+                !output.contains("file1.rs"),
+                "Nested file1.rs should be absent"
+            );
+            assert!(
+                !output.contains("nested.rs"),
+                "Nested nested.rs should be absent"
+            );
+        }
+        _ => unreachable!(),
+    }
+}
+
+#[test]
+fn test_virtual_tree_size_display() {
+    let temp_dir = tempdir().unwrap();
+    let listing_file = temp_dir.path().join("listing.7z");
+    let content = "\
+2025-07-26 19:58:52 D....            0            0  mydir
+2025-07-26 19:58:52 ....A          512          256  mydir/small.txt
+2025-07-26 19:58:52 ....A         2048         1024  mydir/big.txt
+";
+    fs::write(&listing_file, content).unwrap();
+
+    let mut options = fromfile_options();
+    options.print_size = true;
+
+    let output = list_directory_as_string(&listing_file, &options).unwrap();
+    assert!(
+        output.contains("[512]"),
+        "Should show size bracket for small.txt"
+    );
+    assert!(
+        output.contains("[2048]"),
+        "Should show size bracket for big.txt"
+    );
+}
+
+#[test]
+fn test_virtual_tree_size_human_readable() {
+    let temp_dir = tempdir().unwrap();
+    let listing_file = temp_dir.path().join("listing.7z");
+    let content = "\
+2025-07-26 19:58:52 D....            0            0  mydir
+2025-07-26 19:58:52 ....A          512          256  mydir/small.txt
+2025-07-26 19:58:52 ....A         2048         1024  mydir/big.txt
+";
+    fs::write(&listing_file, content).unwrap();
+
+    let mut options = fromfile_options();
+    options.print_size = true;
+    options.human_readable = true;
+
+    let output = list_directory_as_string(&listing_file, &options).unwrap();
+    assert!(
+        output.contains(" B]") || output.contains(" KB]"),
+        "Human-readable sizes should have unit suffixes, got: {output}"
+    );
+}
+
+#[test]
+fn test_virtual_tree_exclude_pattern() {
+    let (_td, listing_file) = fromfile_listing();
+    let mut options = fromfile_options();
+    options.exclude_patterns = vec![Pattern::new("*.log").unwrap()];
+
+    let output = list_directory_as_string(&listing_file, &options).unwrap();
+    assert!(
+        !output.contains("file_root.log"),
+        "Excluded .log files should be absent"
+    );
+    assert!(
+        output.contains("file1.rs"),
+        ".rs files should still be present"
+    );
+    assert!(
+        output.contains("file2.txt"),
+        ".txt files should still be present"
+    );
+}
+
+#[test]
+fn test_virtual_tree_pattern_prune() {
+    let (_td, listing_file) = fromfile_listing();
+    let mut options = fromfile_options();
+    options.pattern_glob = Some(Pattern::new("*.rs").unwrap());
+    options.prune = true;
+
+    let output = list_directory_as_string(&listing_file, &options).unwrap();
+    assert!(
+        output.contains("dir1"),
+        "dir1 has .rs files, should be present"
+    );
+    assert!(output.contains("file1.rs"), "file1.rs should be present");
+    assert!(output.contains("nested.rs"), "nested.rs should be present");
+    assert!(
+        output.contains("sub"),
+        "sub dir (contains nested.rs) should be present"
+    );
+    assert!(
+        !output.contains("dir2"),
+        "dir2 has no .rs files, should be pruned"
+    );
+    assert!(
+        !output.contains("file_root.log"),
+        "Non-.rs root file should be absent"
+    );
+}
+
+#[test]
+fn test_filesystem_icons_enabled() {
+    let temp_dir = create_test_directory();
+    let mut options = create_default_options();
+    options.icons = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+    assert!(!output.is_empty());
+    assert!(output.contains("src"));
+    assert!(output.contains("README.md"));
+}
+
+#[test]
+fn test_filesystem_color_file_types() {
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    fs::create_dir(temp_path.join("subdir")).unwrap();
+    fs::write(temp_path.join("archive.tar"), "").unwrap();
+    fs::write(temp_path.join("image.png"), "").unwrap();
+    fs::write(temp_path.join("code.rs"), "").unwrap();
+    fs::write(temp_path.join("noext"), "").unwrap();
+
+    let mut options = create_default_options();
+    options.color = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+    assert!(
+        output.contains("\x1B["),
+        "Color output should contain ANSI escape codes"
+    );
+}
+
+#[rstest]
+#[case::dirs_first_reverse(true, false, true)]
+#[case::sort_by_time_reverse(false, true, true)]
+#[case::dirs_first_sort_by_time(true, true, false)]
+fn test_sort_combinations(
+    #[case] dirs_first: bool,
+    #[case] sort_by_time: bool,
+    #[case] reverse: bool,
+) {
+    let temp_dir = create_test_directory();
+    let mut options = create_default_options();
+    options.dirs_first = dirs_first;
+    options.sort_by_time = sort_by_time;
+    options.reverse = reverse;
+
+    let output = list_directory_as_string(temp_dir.path(), &options).unwrap();
+    assert!(output.contains("src"), "Output should contain 'src' dir");
+    assert!(
+        output.contains("Cargo.toml"),
+        "Output should contain 'Cargo.toml'"
+    );
+    assert!(
+        output.contains("2 directories"),
+        "Report should show 2 directories, got: {output}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn test_classify_executable() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    let exec_path = temp_path.join("run.sh");
+    fs::write(&exec_path, "#!/bin/sh").unwrap();
+    fs::set_permissions(&exec_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    fs::write(temp_path.join("data.txt"), "content").unwrap();
+
+    let mut options = create_default_options();
+    options.classify = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+    assert!(
+        output.contains("run.sh*"),
+        "Executable file should have * indicator"
+    );
+    assert!(
+        !output.contains("data.txt*"),
+        "Non-executable file should not have * indicator"
+    );
 }

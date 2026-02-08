@@ -1,11 +1,9 @@
-// Unit tests for main.rs CLI logic
-// Tests CLI argument parsing and TreeOptions construction
-
 use glob::Pattern;
+use rstest::rstest;
+use rust_tree::rust_tree::cli::run_with_args;
 use rust_tree::rust_tree::options::TreeOptions;
-
-// We need to test the parse_glob_pattern function and TreeOptions construction
-// Since main.rs functions aren't exported, we'll test the equivalent logic
+use std::fs;
+use tempfile::TempDir;
 
 fn create_test_options() -> TreeOptions {
     TreeOptions {
@@ -244,4 +242,35 @@ fn test_boolean_option_combinations() {
     assert!(options.no_report);
     assert!(options.print_permissions);
     assert!(options.from_file);
+}
+
+fn make_test_dir() -> TempDir {
+    let dir = TempDir::new().unwrap();
+    fs::write(dir.path().join("hello.txt"), "hello").unwrap();
+    fs::create_dir(dir.path().join("subdir")).unwrap();
+    fs::write(dir.path().join("subdir").join("nested.rs"), "fn main(){}").unwrap();
+    dir
+}
+
+#[rstest]
+#[case::basic(&[])]
+#[case::all_files(&["-a"])]
+#[case::dirs_only(&["-d"])]
+#[case::noreport(&["--noreport"])]
+#[case::level_limit(&["-L", "1"])]
+#[case::ascii(&["-A"])]
+#[case::classify(&["-F"])]
+#[case::full_path(&["-f"])]
+#[case::no_indent(&["-i"])]
+#[case::size(&["-s"])]
+#[case::reverse(&["-r"])]
+fn test_run_with_args_success(#[case] extra_flags: &[&str]) {
+    let dir = make_test_dir();
+    let mut args: Vec<String> = vec!["tree".to_string(), dir.path().to_str().unwrap().to_string()];
+    args.extend(extra_flags.iter().map(|f| f.to_string()));
+    let result = run_with_args(args);
+    assert!(
+        result.is_ok(),
+        "run_with_args failed with flags {extra_flags:?}: {result:?}"
+    );
 }

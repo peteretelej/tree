@@ -434,7 +434,7 @@ fn parse_7z_listing(lines: Vec<String>) -> Vec<FileEntry> {
     entries.into_values().collect()
 }
 
-fn parse_7z_line(line: &str) -> Option<FileEntry> {
+pub fn parse_7z_line(line: &str) -> Option<FileEntry> {
     let line = line.trim();
     if line.is_empty()
         || line.starts_with("7-Zip")
@@ -501,8 +501,14 @@ fn parse_7z_line(line: &str) -> Option<FileEntry> {
         return None;
     };
 
+    let clean_path = if is_dir {
+        path.trim_end_matches('/')
+    } else {
+        &path
+    };
+
     Some(FileEntry {
-        path: normalize_path(&path),
+        path: normalize_path(clean_path),
         is_dir,
         size,
     })
@@ -540,7 +546,7 @@ fn parse_rar_listing(lines: Vec<String>) -> Vec<FileEntry> {
     entries.into_values().collect()
 }
 
-fn parse_rar_line(line: &str) -> Option<FileEntry> {
+pub fn parse_rar_line(line: &str) -> Option<FileEntry> {
     let line = line.trim();
     if line.is_empty()
         || line.starts_with("RAR ")
@@ -597,8 +603,14 @@ fn parse_rar_line(line: &str) -> Option<FileEntry> {
         return None;
     };
 
+    let clean_path = if is_dir {
+        path.trim_end_matches('/')
+    } else {
+        &path
+    };
+
     Some(FileEntry {
-        path: normalize_path(&path),
+        path: normalize_path(clean_path),
         is_dir,
         size,
     })
@@ -611,7 +623,7 @@ pub fn build_virtual_tree(entries: Vec<FileEntry>, _options: &TreeOptions) -> Vi
     }
 }
 
-fn normalize_path(path: &str) -> String {
+pub fn normalize_path(path: &str) -> String {
     let mut normalized = path.replace('\\', "/");
 
     // Handle Windows drive letters: C:/ → C/

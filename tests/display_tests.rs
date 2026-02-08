@@ -1,8 +1,6 @@
-// Unit tests for display.rs
-// Tests colorization and formatting functions
-
 use rust_tree::rust_tree::display::{colorize, format_permissions_unix};
 use std::fs;
+use tempfile::tempdir;
 
 // Helper function to get a test DirEntry
 fn with_test_entry<F, R>(f: F) -> Option<R>
@@ -138,9 +136,7 @@ fn test_format_permissions_non_unix() {
 
 #[test]
 fn test_colorize_edge_cases() {
-    // Test edge cases with actual DirEntry
     with_test_entry(|entry| {
-        // Test various text inputs
         let edge_cases = [
             "",
             "a",
@@ -152,8 +148,71 @@ fn test_colorize_edge_cases() {
 
         for text in edge_cases {
             let result = colorize(entry, text);
-            // Even empty text should return something (at minimum the text itself)
             assert!(result.len() >= text.len());
         }
     });
+}
+
+fn find_entry(dir: &std::path::Path, name: &str) -> fs::DirEntry {
+    fs::read_dir(dir)
+        .unwrap()
+        .flatten()
+        .find(|e| e.file_name() == name)
+        .unwrap()
+}
+
+#[cfg(unix)]
+#[test]
+fn test_colorize_symlink() {
+    use std::os::unix::fs as unix_fs;
+
+    let dir = tempdir().unwrap();
+    let target = dir.path().join("target");
+    fs::write(&target, "").unwrap();
+    unix_fs::symlink(&target, dir.path().join("link")).unwrap();
+
+    let entry = find_entry(dir.path(), "link");
+    let result = colorize(&entry, "link");
+    assert!(
+        result.contains("\x1B["),
+        "symlink should have ANSI color, got: {result}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn test_colorize_executable() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let dir = tempdir().unwrap();
+    let file = dir.path().join("run");
+    fs::write(&file, "").unwrap();
+    fs::set_permissions(&file, fs::Permissions::from_mode(0o755)).unwrap();
+
+    let entry = find_entry(dir.path(), "run");
+    let result = colorize(&entry, "run");
+    assert!(
+        result.contains("\x1B["),
+        "executable should have ANSI color, got: {result}"
+    );
+}
+
+#[test]
+fn test_colorize_no_extension() {
+    let dir = tempdir().unwrap();
+    let file = dir.path().join("Makefile");
+    fs::write(&file, "").unwrap();
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(&file, fs::Permissions::from_mode(0o644)).unwrap();
+    }
+
+    let entry = find_entry(dir.path(), "Makefile");
+    let result = colorize(&entry, "Makefile");
+    assert_eq!(
+        result, "Makefile",
+        "no-extension file should have no ANSI color"
+    );
 }
