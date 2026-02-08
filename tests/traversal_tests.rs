@@ -1485,3 +1485,95 @@ fn test_virtual_tree_pattern_prune() {
         "Non-.rs root file should be absent"
     );
 }
+
+#[test]
+fn test_filesystem_icons_enabled() {
+    let temp_dir = create_test_directory();
+    let mut options = create_default_options();
+    options.icons = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+    assert!(!output.is_empty());
+    assert!(output.contains("src"));
+    assert!(output.contains("README.md"));
+}
+
+#[test]
+fn test_filesystem_color_file_types() {
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    fs::create_dir(temp_path.join("subdir")).unwrap();
+    fs::write(temp_path.join("archive.tar"), "").unwrap();
+    fs::write(temp_path.join("image.png"), "").unwrap();
+    fs::write(temp_path.join("code.rs"), "").unwrap();
+    fs::write(temp_path.join("noext"), "").unwrap();
+
+    let mut options = create_default_options();
+    options.color = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+    assert!(
+        output.contains("\x1B["),
+        "Color output should contain ANSI escape codes"
+    );
+}
+
+#[rstest]
+#[case::dirs_first_reverse(true, false, true)]
+#[case::sort_by_time_reverse(false, true, true)]
+#[case::dirs_first_sort_by_time(true, true, false)]
+fn test_sort_combinations(
+    #[case] dirs_first: bool,
+    #[case] sort_by_time: bool,
+    #[case] reverse: bool,
+) {
+    let temp_dir = create_test_directory();
+    let mut options = create_default_options();
+    options.dirs_first = dirs_first;
+    options.sort_by_time = sort_by_time;
+    options.reverse = reverse;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+    assert!(!output.is_empty());
+}
+
+#[cfg(unix)]
+#[test]
+fn test_classify_executable() {
+    use std::os::unix::fs::PermissionsExt;
+
+    let temp_dir = tempdir().unwrap();
+    let temp_path = temp_dir.path();
+
+    let exec_path = temp_path.join("run.sh");
+    fs::write(&exec_path, "#!/bin/sh").unwrap();
+    fs::set_permissions(&exec_path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+    fs::write(temp_path.join("data.txt"), "content").unwrap();
+
+    let mut options = create_default_options();
+    options.classify = true;
+
+    let result = list_directory_as_string(temp_dir.path(), &options);
+    assert!(result.is_ok());
+
+    let output = result.unwrap();
+    assert!(
+        output.contains("run.sh*"),
+        "Executable file should have * indicator"
+    );
+    assert!(
+        !output.contains("data.txt*"),
+        "Non-executable file should not have * indicator"
+    );
+}
