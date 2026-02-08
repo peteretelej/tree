@@ -36,3 +36,35 @@ fn test_from_file() {
     let icon = mgr.get_icon_for_path(Path::new("test.custom"));
     assert_eq!(icon, "X");
 }
+
+#[test]
+fn test_default_trait() {
+    let mgr = IconManager::default();
+    let icon = mgr.get_icon_for_path(Path::new("test.rs"));
+    assert!(!icon.is_empty());
+}
+
+#[test]
+fn test_missing_dir_and_file_keys() {
+    let mut temp = NamedTempFile::new().unwrap();
+    writeln!(
+        temp,
+        r#"{{"well_known":{{}},"extensions":{{}},"icons":{{"symlink":"S"}}}}"#
+    )
+    .unwrap();
+
+    let mgr = IconManager::from_file(temp.path().to_str().unwrap()).unwrap();
+
+    let dir = tempdir().unwrap();
+    let dir_icon = mgr.get_icon_for_path(dir.path());
+    assert!(
+        !dir_icon.is_empty(),
+        "dir fallback should return non-empty icon"
+    );
+
+    let file_icon = mgr.get_icon_for_path(Path::new("unknown_file_no_ext"));
+    assert!(
+        !file_icon.is_empty(),
+        "file fallback should return non-empty icon"
+    );
+}
