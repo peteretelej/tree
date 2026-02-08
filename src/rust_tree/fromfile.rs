@@ -501,8 +501,14 @@ pub fn parse_7z_line(line: &str) -> Option<FileEntry> {
         return None;
     };
 
+    let clean_path = if is_dir {
+        path.trim_end_matches('/')
+    } else {
+        &path
+    };
+
     Some(FileEntry {
-        path: normalize_path(&path),
+        path: normalize_path(clean_path),
         is_dir,
         size,
     })
@@ -597,8 +603,14 @@ pub fn parse_rar_line(line: &str) -> Option<FileEntry> {
         return None;
     };
 
+    let clean_path = if is_dir {
+        path.trim_end_matches('/')
+    } else {
+        &path
+    };
+
     Some(FileEntry {
-        path: normalize_path(&path),
+        path: normalize_path(clean_path),
         is_dir,
         size,
     })

@@ -235,7 +235,7 @@ fn test_parse_rar_line_simple_file() {
 fn test_parse_rar_line_simple_directory() {
     let line = " drwxrwxr-x         0  2025-07-26 21:18  test_rar/";
     let entry = parse_rar_line(line).unwrap();
-    assert_eq!(entry.path, "test_rar/");
+    assert_eq!(entry.path, "test_rar");
     assert!(entry.is_dir);
 }
 
@@ -253,7 +253,7 @@ fn test_parse_rar_line_verbose_file() {
 fn test_parse_rar_line_verbose_directory() {
     let line = " drwxrwxr-x         0         0   0%  2025-07-26 21:18  00000000  test_rar/";
     let entry = parse_rar_line(line).unwrap();
-    assert_eq!(entry.path, "test_rar/");
+    assert_eq!(entry.path, "test_rar");
     assert!(entry.is_dir);
 }
 
@@ -277,4 +277,44 @@ fn test_parse_rar_line_none(#[case] line: &str) {
 #[case::simple_filename("file.txt", "file.txt")]
 fn test_normalize_path(#[case] input: &str, #[case] expected: &str) {
     assert_eq!(normalize_path(input), expected);
+}
+
+#[test]
+fn test_parsers_strip_trailing_slash_from_directories() {
+    let cases: Vec<(
+        &str,
+        fn(&str) -> Option<rust_tree::rust_tree::fromfile::FileEntry>,
+    )> = vec![
+        (
+            "drwxr-xr-x user/group        0 2025-07-26 21:18 testdir/",
+            parse_tar_verbose_line,
+        ),
+        ("testdir/", parse_tar_simple_line),
+        (
+            "        0  2025-07-26 19:41   testdir/",
+            parse_zip_simple_line,
+        ),
+        (
+            "       0  Stored        0   0% 2025-07-26 19:41 00000000  testdir/",
+            parse_zip_verbose_line,
+        ),
+        (
+            "2025-07-26 19:58:52 D....            0            0  testdir/",
+            parse_7z_line,
+        ),
+        (
+            " drwxrwxr-x         0  2025-07-26 21:18  testdir/",
+            parse_rar_line,
+        ),
+    ];
+
+    for (input, parser) in cases {
+        let entry = parser(input).unwrap_or_else(|| panic!("parser failed on: {input}"));
+        assert!(entry.is_dir, "expected is_dir=true for: {input}");
+        assert!(
+            !entry.path.ends_with('/'),
+            "parser returned trailing slash for: {input} -> {:?}",
+            entry.path
+        );
+    }
 }
