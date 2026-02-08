@@ -1433,8 +1433,10 @@ fn test_virtual_tree_size_human_readable() {
     options.human_readable = true;
 
     let output = list_directory_as_string(&listing_file, &options).unwrap();
-    assert!(output.contains('['), "Should contain size brackets");
-    assert!(output.contains(']'), "Should contain size brackets");
+    assert!(
+        output.contains(" B]") || output.contains(" KB]"),
+        "Human-readable sizes should have unit suffixes, got: {output}"
+    );
 }
 
 #[test]
@@ -1540,11 +1542,16 @@ fn test_sort_combinations(
     options.sort_by_time = sort_by_time;
     options.reverse = reverse;
 
-    let result = list_directory_as_string(temp_dir.path(), &options);
-    assert!(result.is_ok());
-
-    let output = result.unwrap();
-    assert!(!output.is_empty());
+    let output = list_directory_as_string(temp_dir.path(), &options).unwrap();
+    assert!(output.contains("src"), "Output should contain 'src' dir");
+    assert!(
+        output.contains("Cargo.toml"),
+        "Output should contain 'Cargo.toml'"
+    );
+    assert!(
+        output.contains("2 directories"),
+        "Report should show 2 directories, got: {output}"
+    );
 }
 
 #[cfg(unix)]
