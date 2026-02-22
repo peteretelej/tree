@@ -26,4 +26,5 @@ pub struct TreeOptions {
     pub from_file: bool,
     pub icons: bool,
     pub prune: bool,
+    pub gitignore: bool,
 }

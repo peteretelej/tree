@@ -35,6 +35,7 @@ fn create_basic_options() -> TreeOptions {
         icons: false,
         prune: false,
         match_dirs: false,
+        gitignore: false,
     }
 }
 

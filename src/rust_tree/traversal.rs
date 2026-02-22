@@ -529,6 +529,7 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
 ///     from_file: false,
 ///     icons: false,
 ///     prune: false,
+///     gitignore: false,
 /// };
 /// let tree_output = list_directory_as_string(".", &options).unwrap();
 /// println!("{}", tree_output);
