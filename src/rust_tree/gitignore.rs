@@ -87,16 +87,17 @@ impl GitignoreRules {
         let mut rules = Vec::new();
         for name in &[".gitignore", ".ignore"] {
             let file_path = root_path.join(name);
-            rules.extend(load_ignore_file(&file_path, root_path));
+            rules.extend(load_ignore_file(&file_path, Path::new("")));
         }
         Self { rules }
     }
 
-    pub fn extend_with_dir(&self, dir_path: &Path) -> Self {
+    pub fn extend_with_dir(&self, dir_path: &Path, root_path: &Path) -> Self {
         let mut rules = self.rules.clone();
+        let rel_source = dir_path.strip_prefix(root_path).unwrap_or(dir_path);
         for name in &[".gitignore", ".ignore"] {
             let file_path = dir_path.join(name);
-            rules.extend(load_ignore_file(&file_path, dir_path));
+            rules.extend(load_ignore_file(&file_path, rel_source));
         }
         Self { rules }
     }
@@ -310,7 +311,7 @@ mod tests {
         let root_rules = GitignoreRules::load_for_root(dir.path());
         assert_eq!(root_rules.rules.len(), 1);
 
-        let extended = root_rules.extend_with_dir(&child);
+        let extended = root_rules.extend_with_dir(&child, dir.path());
         assert_eq!(extended.rules.len(), 2);
         assert!(extended.is_ignored(Path::new("foo.log"), false));
         assert!(extended.is_ignored(Path::new("bar.tmp"), false));

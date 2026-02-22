@@ -534,6 +534,43 @@ fn exclude_plus_gitignore_compose() {
 }
 
 #[test]
+fn nested_gitignore_anchored_pattern_matches_in_subtree() {
+    let dir = tempdir().unwrap();
+    let p = dir.path();
+
+    // Root has no .gitignore
+    fs::create_dir(p.join("sub")).unwrap();
+    // Nested .gitignore with anchored pattern "/config"
+    fs::write(p.join("sub").join(".gitignore"), "/config\n").unwrap();
+
+    // sub/config should be ignored (anchored to sub/)
+    fs::create_dir(p.join("sub").join("config")).unwrap();
+    fs::write(p.join("sub").join("config").join("settings.json"), "").unwrap();
+    fs::write(p.join("sub").join("code.rs"), "").unwrap();
+
+    // root-level config should NOT be ignored (rule is in sub/.gitignore)
+    fs::create_dir(p.join("config")).unwrap();
+    fs::write(p.join("config").join("global.json"), "").unwrap();
+
+    let mut opts = gitignore_options();
+    opts.all_files = true;
+
+    let output = list_directory_as_string(p, &opts).unwrap();
+    assert!(
+        output.contains("code.rs"),
+        "Non-ignored file in sub/ should appear"
+    );
+    assert!(
+        output.contains("global.json"),
+        "Root-level config/global.json should appear (rule is scoped to sub/)"
+    );
+    assert!(
+        !output.contains("settings.json"),
+        "sub/config/settings.json should be hidden by nested anchored /config pattern"
+    );
+}
+
+#[test]
 fn fromfile_plus_gitignore_silently_ignored() {
     let dir = tempdir().unwrap();
     let listing_file = dir.path().join("listing.txt");

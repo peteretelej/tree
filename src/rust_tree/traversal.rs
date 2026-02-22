@@ -102,7 +102,7 @@ fn should_skip_entry(
 
     if !gitignore_rules.is_empty() {
         let rel_path = path.strip_prefix(root_path).unwrap_or(&path);
-        let is_dir = path.is_dir();
+        let is_dir = entry.file_type()?.is_dir();
         if gitignore_rules.is_ignored(rel_path, is_dir) {
             return Ok(true);
         }
@@ -429,7 +429,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                         false
                     } else {
                         let probe_rules = if options.gitignore {
-                            gitignore_rules.extend_with_dir(&path)
+                            gitignore_rules.extend_with_dir(&path, root_path.as_ref())
                         } else {
                             GitignoreRules::new()
                         };
@@ -485,7 +485,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
 
             if !skip_recursion {
                 let child_rules = if options.gitignore {
-                    gitignore_rules.extend_with_dir(&path)
+                    gitignore_rules.extend_with_dir(&path, root_path.as_ref())
                 } else {
                     GitignoreRules::new()
                 };
