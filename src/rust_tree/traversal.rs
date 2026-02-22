@@ -428,13 +428,15 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                     let has_content = if skip {
                         false
                     } else {
-                        let probe_rules = if options.gitignore {
-                            gitignore_rules.extend_with_dir(&path, root_path.as_ref())
-                        } else {
-                            GitignoreRules::new()
-                        };
+                        let probe_rules;
                         let probe_rules_ref = if options.gitignore {
-                            &probe_rules
+                            match gitignore_rules.extend_with_dir(&path, root_path.as_ref()) {
+                                Some(rules) => {
+                                    probe_rules = rules;
+                                    &probe_rules
+                                }
+                                None => gitignore_rules,
+                            }
                         } else {
                             gitignore_rules
                         };
@@ -484,13 +486,15 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
             found_content = true;
 
             if !skip_recursion {
-                let child_rules = if options.gitignore {
-                    gitignore_rules.extend_with_dir(&path, root_path.as_ref())
-                } else {
-                    GitignoreRules::new()
-                };
+                let child_rules;
                 let child_rules_ref = if options.gitignore {
-                    &child_rules
+                    match gitignore_rules.extend_with_dir(&path, root_path.as_ref()) {
+                        Some(rules) => {
+                            child_rules = rules;
+                            &child_rules
+                        }
+                        None => gitignore_rules,
+                    }
                 } else {
                     gitignore_rules
                 };

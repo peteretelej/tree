@@ -3,7 +3,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 const MATCH_OPTIONS: MatchOptions = MatchOptions {
-    case_sensitive: true,
+    case_sensitive: !cfg!(any(target_os = "macos", target_os = "windows")),
     require_literal_separator: true,
     require_literal_leading_dot: false,
 };
@@ -27,22 +27,22 @@ fn parse_line(line: &str, source_dir: &Path) -> Option<GitignoreRule> {
         return None;
     }
 
-    let mut s = trimmed.to_string();
+    let (negated, s) = match trimmed.strip_prefix('!') {
+        Some(rest) => (true, rest),
+        None => (false, trimmed),
+    };
 
-    let negated = s.starts_with('!');
-    if negated {
-        s = s[1..].to_string();
-    }
+    let (dir_only, s) = match s.strip_suffix('/') {
+        Some(rest) => (true, rest),
+        None => (false, s),
+    };
 
-    let dir_only = s.ends_with('/');
-    if dir_only {
-        s = s[..s.len() - 1].to_string();
-    }
+    let (has_leading_slash, s) = match s.strip_prefix('/') {
+        Some(rest) => (true, rest),
+        None => (false, s),
+    };
 
-    let has_leading_slash = s.starts_with('/');
-    if has_leading_slash {
-        s = s[1..].to_string();
-    }
+    let mut s = s.to_string();
 
     let anchored = has_leading_slash || s.contains('/');
 
@@ -92,14 +92,19 @@ impl GitignoreRules {
         Self { rules }
     }
 
-    pub fn extend_with_dir(&self, dir_path: &Path, root_path: &Path) -> Self {
-        let mut rules = self.rules.clone();
+    pub fn extend_with_dir(&self, dir_path: &Path, root_path: &Path) -> Option<Self> {
         let rel_source = dir_path.strip_prefix(root_path).unwrap_or(dir_path);
+        let mut new_rules = Vec::new();
         for name in &[".gitignore", ".ignore"] {
             let file_path = dir_path.join(name);
-            rules.extend(load_ignore_file(&file_path, rel_source));
+            new_rules.extend(load_ignore_file(&file_path, rel_source));
         }
-        Self { rules }
+        if new_rules.is_empty() {
+            return None;
+        }
+        let mut rules = self.rules.clone();
+        rules.append(&mut new_rules);
+        Some(Self { rules })
     }
 
     pub fn is_ignored(&self, rel_path: &Path, is_dir: bool) -> bool {
@@ -311,10 +316,29 @@ mod tests {
         let root_rules = GitignoreRules::load_for_root(dir.path());
         assert_eq!(root_rules.rules.len(), 1);
 
-        let extended = root_rules.extend_with_dir(&child, dir.path());
+        let extended = root_rules.extend_with_dir(&child, dir.path()).unwrap();
         assert_eq!(extended.rules.len(), 2);
         assert!(extended.is_ignored(Path::new("foo.log"), false));
         assert!(extended.is_ignored(Path::new("bar.tmp"), false));
+    }
+
+    #[test]
+    fn extend_with_dir_returns_none_when_no_ignore_files() {
+        let dir = tempfile::tempdir().unwrap();
+        let child = dir.path().join("sub");
+        fs::create_dir(&child).unwrap();
+
+        let root_rules = GitignoreRules::load_for_root(dir.path());
+        assert!(root_rules.extend_with_dir(&child, dir.path()).is_none());
+    }
+
+    #[test]
+    fn case_sensitivity_matches_platform() {
+        if cfg!(any(target_os = "macos", target_os = "windows")) {
+            assert!(!MATCH_OPTIONS.case_sensitive);
+        } else {
+            assert!(MATCH_OPTIONS.case_sensitive);
+        }
     }
 
     #[test]
