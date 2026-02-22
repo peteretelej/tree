@@ -318,8 +318,14 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
     let mut entries_info: Vec<EntryInfo> = match read_dir_result {
         Ok(reader) => reader
             .filter_map(Result::ok)
-            .filter(
-                |entry| match should_skip_entry(entry, options, parent_matched, gitignore_rules, root_path.as_ref()) {
+            .filter(|entry| {
+                match should_skip_entry(
+                    entry,
+                    options,
+                    parent_matched,
+                    gitignore_rules,
+                    root_path.as_ref(),
+                ) {
                     Ok(skip) => !skip,
                     Err(e) => {
                         eprintln!(
@@ -329,8 +335,8 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                         );
                         false
                     }
-                },
-            )
+                }
+            })
             .map(|entry| {
                 // Get metadata/mod_time needed for sorting
                 let mod_time = entry.metadata().and_then(|m| m.modified());

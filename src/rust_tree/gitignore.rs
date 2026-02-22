@@ -8,6 +8,7 @@ const MATCH_OPTIONS: MatchOptions = MatchOptions {
     require_literal_leading_dot: false,
 };
 
+#[derive(Clone)]
 struct GitignoreRule {
     pattern: Pattern,
     negated: bool,
@@ -92,13 +93,7 @@ impl GitignoreRules {
     }
 
     pub fn extend_with_dir(&self, dir_path: &Path) -> Self {
-        let mut rules = self.rules.iter().map(|r| GitignoreRule {
-            pattern: r.pattern.clone(),
-            negated: r.negated,
-            dir_only: r.dir_only,
-            anchored: r.anchored,
-            source_dir: r.source_dir.clone(),
-        }).collect::<Vec<_>>();
+        let mut rules = self.rules.clone();
         for name in &[".gitignore", ".ignore"] {
             let file_path = dir_path.join(name);
             rules.extend(load_ignore_file(&file_path, dir_path));
@@ -162,8 +157,12 @@ mod tests {
         assert!(!rule.negated);
         assert!(!rule.dir_only);
         assert!(!rule.anchored);
-        assert!(rule.pattern.matches_path_with(Path::new("foo.log"), MATCH_OPTIONS));
-        assert!(rule.pattern.matches_path_with(Path::new("a/b/foo.log"), MATCH_OPTIONS));
+        assert!(rule
+            .pattern
+            .matches_path_with(Path::new("foo.log"), MATCH_OPTIONS));
+        assert!(rule
+            .pattern
+            .matches_path_with(Path::new("a/b/foo.log"), MATCH_OPTIONS));
     }
 
     #[test]
@@ -172,7 +171,9 @@ mod tests {
         assert!(!rule.negated);
         assert!(rule.dir_only);
         assert!(!rule.anchored);
-        assert!(rule.pattern.matches_path_with(Path::new("build"), MATCH_OPTIONS));
+        assert!(rule
+            .pattern
+            .matches_path_with(Path::new("build"), MATCH_OPTIONS));
     }
 
     #[test]
@@ -181,16 +182,24 @@ mod tests {
         assert!(!rule.negated);
         assert!(!rule.dir_only);
         assert!(rule.anchored);
-        assert!(rule.pattern.matches_path_with(Path::new("build"), MATCH_OPTIONS));
-        assert!(!rule.pattern.matches_path_with(Path::new("src/build"), MATCH_OPTIONS));
+        assert!(rule
+            .pattern
+            .matches_path_with(Path::new("build"), MATCH_OPTIONS));
+        assert!(!rule
+            .pattern
+            .matches_path_with(Path::new("src/build"), MATCH_OPTIONS));
     }
 
     #[test]
     fn parse_anchored_contains_slash() {
         let rule = parse_line("src/generated", Path::new("")).unwrap();
         assert!(rule.anchored);
-        assert!(rule.pattern.matches_path_with(Path::new("src/generated"), MATCH_OPTIONS));
-        assert!(!rule.pattern.matches_path_with(Path::new("other/src/generated"), MATCH_OPTIONS));
+        assert!(rule
+            .pattern
+            .matches_path_with(Path::new("src/generated"), MATCH_OPTIONS));
+        assert!(!rule
+            .pattern
+            .matches_path_with(Path::new("other/src/generated"), MATCH_OPTIONS));
     }
 
     #[test]
@@ -218,8 +227,12 @@ mod tests {
     #[test]
     fn parse_trailing_whitespace_stripped() {
         let rule = parse_line("*.log   ", Path::new("")).unwrap();
-        assert!(rule.pattern.matches_path_with(Path::new("foo.log"), MATCH_OPTIONS));
-        assert!(!rule.pattern.matches_path_with(Path::new("foo.log   "), MATCH_OPTIONS));
+        assert!(rule
+            .pattern
+            .matches_path_with(Path::new("foo.log"), MATCH_OPTIONS));
+        assert!(!rule
+            .pattern
+            .matches_path_with(Path::new("foo.log   "), MATCH_OPTIONS));
     }
 
     #[test]
@@ -328,6 +341,8 @@ mod tests {
         let rule = parse_line("src/generated/", Path::new("")).unwrap();
         assert!(rule.anchored);
         assert!(rule.dir_only);
-        assert!(rule.pattern.matches_path_with(Path::new("src/generated"), MATCH_OPTIONS));
+        assert!(rule
+            .pattern
+            .matches_path_with(Path::new("src/generated"), MATCH_OPTIONS));
     }
 }

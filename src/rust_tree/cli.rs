@@ -175,7 +175,10 @@ pub struct Cli {
     )]
     pub match_dirs: bool,
 
-    #[arg(long = "gitignore", help = "Exclude entries matching .gitignore rules.")]
+    #[arg(
+        long = "gitignore",
+        help = "Exclude entries matching .gitignore rules."
+    )]
     pub gitignore: bool,
 }
 
