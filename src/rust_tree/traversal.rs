@@ -17,6 +17,7 @@ use crate::rust_tree::display::format_permissions_unix;
 use crate::rust_tree::fromfile::{
     build_virtual_tree, parse_file_listing, read_file_listing, FileEntry, VirtualTree,
 };
+use crate::rust_tree::gitignore::GitignoreRules;
 use crate::rust_tree::options::TreeOptions;
 use crate::rust_tree::utils::bytes_to_human_readable;
 
@@ -88,6 +89,8 @@ fn should_skip_entry(
     entry: &fs::DirEntry,
     options: &TreeOptions,
     parent_matched: bool,
+    gitignore_rules: &GitignoreRules,
+    root_path: &Path,
 ) -> std::io::Result<bool> {
     let path = entry.path();
     let file_name = path.file_name().and_then(|name| name.to_str());
@@ -95,6 +98,14 @@ fn should_skip_entry(
     let is_hidden = file_name.map(|name| name.starts_with('.')).unwrap_or(false);
     if !options.all_files && is_hidden {
         return Ok(true);
+    }
+
+    if !gitignore_rules.is_empty() {
+        let rel_path = path.strip_prefix(root_path).unwrap_or(&path);
+        let is_dir = path.is_dir();
+        if gitignore_rules.is_ignored(rel_path, is_dir) {
+            return Ok(true);
+        }
     }
 
     for exclude_pattern in &options.exclude_patterns {
@@ -300,6 +311,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
     indent_state: &[bool],
     icon_manager: &IconManager,
     parent_matched: bool,
+    gitignore_rules: &GitignoreRules,
 ) -> std::io::Result<bool> {
     // --- 1. Read and Pre-process Directory Entries ---
     let read_dir_result = fs::read_dir(current_path);
@@ -307,7 +319,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
         Ok(reader) => reader
             .filter_map(Result::ok)
             .filter(
-                |entry| match should_skip_entry(entry, options, parent_matched) {
+                |entry| match should_skip_entry(entry, options, parent_matched, gitignore_rules, root_path.as_ref()) {
                     Ok(skip) => !skip,
                     Err(e) => {
                         eprintln!(
@@ -410,6 +422,16 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                     let has_content = if skip {
                         false
                     } else {
+                        let probe_rules = if options.gitignore {
+                            gitignore_rules.extend_with_dir(&path)
+                        } else {
+                            GitignoreRules::new()
+                        };
+                        let probe_rules_ref = if options.gitignore {
+                            &probe_rules
+                        } else {
+                            gitignore_rules
+                        };
                         let mut probe_stats = (0u64, 0u64);
                         traverse_directory(
                             &mut io::sink(),
@@ -421,6 +443,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                             &[],
                             icon_manager,
                             child_matched,
+                            probe_rules_ref,
                         )?
                     };
                     Ok(has_content || child_matched)
@@ -455,6 +478,16 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
             found_content = true;
 
             if !skip_recursion {
+                let child_rules = if options.gitignore {
+                    gitignore_rules.extend_with_dir(&path)
+                } else {
+                    GitignoreRules::new()
+                };
+                let child_rules_ref = if options.gitignore {
+                    &child_rules
+                } else {
+                    gitignore_rules
+                };
                 let mut next_indent_state = indent_state.to_vec();
                 next_indent_state.push(is_last);
                 traverse_directory(
@@ -467,6 +500,7 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
                     &next_indent_state,
                     icon_manager,
                     child_parent_matched,
+                    child_rules_ref,
                 )?;
             }
         } else {
@@ -605,6 +639,12 @@ fn list_from_filesystem_with_writer<W: Write>(
     // Create icon manager if icons are enabled
     let icon_manager = IconManager::new();
 
+    let gitignore_rules = if options.gitignore {
+        GitignoreRules::load_for_root(current_path)
+    } else {
+        GitignoreRules::new()
+    };
+
     traverse_directory(
         &mut writer,
         current_path,
@@ -615,6 +655,7 @@ fn list_from_filesystem_with_writer<W: Write>(
         &[],
         &icon_manager,
         false,
+        &gitignore_rules,
     )?;
 
     if !options.no_report {
