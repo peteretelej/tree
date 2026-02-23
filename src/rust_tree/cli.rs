@@ -184,10 +184,19 @@ pub fn cli_to_options(cli: &Cli) -> Result<TreeOptions, String> {
         .map(|pattern| parse_glob_pattern(pattern))
         .transpose()?;
 
+    // since `glob` does not handle pipe-separated patterns (e.g. "x|y|z").
+    // Split each CLI argument on '|' into individual patterns,
+    // then parse each one separately.
+    // we keep parse_glob_pattern since otherwise, 
+    // .filter/.flat_map yields 
+    // &str while we need <Vec<T>, E>. Not sure if this is 
+    // okay to do. 
     let exclude_patterns: Vec<Pattern> = cli
         .exclude
         .iter()
-        .map(|pattern| parse_glob_pattern(pattern))
+        .flat_map(|s| s.split('|'))
+        .filter(|s| !s.is_empty())
+        .map(|pattern| parse_glob_pattern(pattern))        
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(TreeOptions {
@@ -404,4 +413,6 @@ mod tests {
         let result = run_with_args(args);
         assert!(result.is_err());
     }
+
+
 }

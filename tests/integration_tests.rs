@@ -190,6 +190,23 @@ fn test_pattern_matching() {
     assert!(output_contains(&output_exclude, "README.md"));
     assert!(output_not_contains(&output_exclude, "main.rs"));
     assert!(output_not_contains(&output_exclude, "test.rs"));
+
+    // Pipe-separated exclude pattern
+    let output_pipe_exclude = cmd()
+        .args(["-I", "src|docs", temp_dir.path().to_str().unwrap()])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    // Both directories should be excluded
+    assert!(output_not_contains(&output_pipe_exclude, "src"));
+    assert!(output_not_contains(&output_pipe_exclude, "docs"));
+
+    // Other entries should still exist
+    assert!(output_contains(&output_pipe_exclude, "tests"));
+    assert!(output_contains(&output_pipe_exclude, "README.md"));
 }
 
 #[test]
