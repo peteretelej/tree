@@ -184,10 +184,15 @@ pub fn cli_to_options(cli: &Cli) -> Result<TreeOptions, String> {
         .map(|pattern| parse_glob_pattern(pattern))
         .transpose()?;
 
+    // `glob::Pattern` does not support pipe-separated alternatives (e.g. "src|docs"),
+    // so split each `-I` argument on '|' and parse each fragment individually.
     let exclude_patterns: Vec<Pattern> = cli
         .exclude
         .iter()
-        .map(|pattern| parse_glob_pattern(pattern))
+        .flat_map(|s| s.split('|'))
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+        .map(|pattern| parse_glob_pattern(pattern))        
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(TreeOptions {
@@ -352,6 +357,43 @@ mod tests {
         assert!(options.print_permissions);
         assert!(options.from_file);
     }
+    #[test]
+    fn test_cli_to_options_pipe_separated_exclude() {
+        let cli = Cli {
+            path: ".".to_string(),
+            exclude: vec!["src|docs".to_string()],
+            all_files: true,
+            level: Some(2),
+            dir_only: false,
+            no_indent: false,
+            print_size: true,
+            human_readable: true,
+            pattern: Some("*.rs".to_string()),
+            full_path: true,
+            color: true,
+            no_color: false,
+            ascii: true,
+            sort_by_time: true,
+            reverse: true,
+            print_mod_date: true,
+            output_file: Some("output.txt".to_string()),
+            file_limit: Some(100),
+            dirs_first: true,
+            classify: true,
+            no_report: true,
+            print_permissions: true,
+            fromfile: true,
+            icons: false,
+            prune: false,
+            match_dirs: false,
+
+        };
+
+        let options = cli_to_options(&cli).unwrap();
+        assert_eq!(options.exclude_patterns.len(), 2);
+        assert!(options.exclude_patterns[0].matches("src"));
+        assert!(options.exclude_patterns[1].matches("docs"));
+    }
 
     #[test]
     fn test_cli_to_options_invalid_pattern() {
@@ -404,4 +446,6 @@ mod tests {
         let result = run_with_args(args);
         assert!(result.is_err());
     }
+
+
 }

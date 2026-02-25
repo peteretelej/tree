@@ -190,6 +190,54 @@ fn test_pattern_matching() {
     assert!(output_contains(&output_exclude, "README.md"));
     assert!(output_not_contains(&output_exclude, "main.rs"));
     assert!(output_not_contains(&output_exclude, "test.rs"));
+
+    // Pipe-separated exclude pattern
+    let output_pipe_exclude = cmd()
+        .args(["-I", "src|docs", temp_dir.path().to_str().unwrap()])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    // Both directories should be excluded
+    assert!(output_not_contains(&output_pipe_exclude, "src"));
+    assert!(output_not_contains(&output_pipe_exclude, "docs"));
+
+    // Other entries should still exist
+    assert!(output_contains(&output_pipe_exclude, "tests"));
+    assert!(output_contains(&output_pipe_exclude, "README.md"));
+
+    // Leading/trailing pipes should still exclude both dirs
+    let output_pipe_edges = cmd()
+        .args(["-I", "|src|docs|", temp_dir.path().to_str().unwrap()])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    assert!(output_not_contains(&output_pipe_edges, "src"));
+    assert!(output_not_contains(&output_pipe_edges, "docs"));
+
+    // Other entries should still exist
+    assert!(output_contains(&output_pipe_exclude, "tests"));
+    assert!(output_contains(&output_pipe_exclude, "README.md"));
+
+    // Consecutive pipes (empty segment between them) should be ignored
+    let output_double_pipe = cmd()
+        .args(["-I", "src||docs", temp_dir.path().to_str().unwrap()])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+    assert!(output_not_contains(&output_double_pipe, "src"));
+    assert!(output_not_contains(&output_double_pipe, "docs"));
+
+    // Other entries should still exist
+    assert!(output_contains(&output_pipe_exclude, "tests"));
+    assert!(output_contains(&output_pipe_exclude, "README.md"));
+
 }
 
 #[test]
