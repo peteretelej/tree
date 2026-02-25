@@ -237,7 +237,6 @@ fn test_pattern_matching() {
     // Other entries should still exist
     assert!(output_contains(&output_pipe_exclude, "tests"));
     assert!(output_contains(&output_pipe_exclude, "README.md"));
-
 }
 
 #[test]

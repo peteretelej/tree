@@ -192,7 +192,7 @@ pub fn cli_to_options(cli: &Cli) -> Result<TreeOptions, String> {
         .flat_map(|s| s.split('|'))
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
-        .map(|pattern| parse_glob_pattern(pattern))        
+        .map(parse_glob_pattern)
         .collect::<Result<Vec<_>, _>>()?;
 
     Ok(TreeOptions {
@@ -386,7 +386,6 @@ mod tests {
             icons: false,
             prune: false,
             match_dirs: false,
-
         };
 
         let options = cli_to_options(&cli).unwrap();
@@ -446,6 +445,4 @@ mod tests {
         let result = run_with_args(args);
         assert!(result.is_err());
     }
-
-
 }

@@ -8,12 +8,10 @@ export CARGO_TERM_COLOR=always
 export RUSTFLAGS="-D warnings"
 
 echo "→ Running clippy..."
-if ! cargo clippy -- -D warnings -D clippy::uninlined-format-args; then
+if ! cargo clippy; then
     echo ""
     echo "❌ Clippy failed! To fix issues automatically, run:"
-    echo "   git stash  # Save uncommitted changes first"
-    echo "   cargo clippy --fix -- -D clippy::uninlined-format-args"
-    echo "   git stash pop  # Restore your changes"
+    echo "   cargo clippy --fix"
     exit 1
 fi
 
