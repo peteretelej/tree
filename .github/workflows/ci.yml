@@ -1,18 +1,21 @@
-name: PR Check
+name: CI
 
 on:
+  push:
+    branches: [main]
   pull_request:
     branches: [main]
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTFLAGS: "-D warnings"
 
 permissions:
   contents: read
 
 jobs:
-  test:
-    name: Test
+  lint:
+    name: Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,16 +28,41 @@ jobs:
       - name: Setup Rust cache
         uses: Swatinem/rust-cache@v2
 
-      - name: Check formatting (info)
-        run: cargo fmt --check || echo "::warning::Run 'cargo fmt' to fix formatting"
-        continue-on-error: true
+      - name: Check formatting
+        run: cargo fmt --check
 
-      - name: Run clippy (info)
-        run: cargo clippy || echo "::warning::Clippy found issues"
-        continue-on-error: true
+      - name: Run clippy
+        run: cargo clippy
 
-      - name: Run tests (required)
+  test:
+    name: Test
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run tests
         run: cargo test --verbose
+
+  coverage:
+    name: Coverage
+    if: github.event_name == 'push'
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@v2
@@ -51,8 +79,27 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
 
+  release-build:
+    name: Release Build
+    if: github.event_name == 'push'
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build release
+        run: cargo build --release
+
   cross-platform:
     name: Test on ${{ matrix.os }}
+    if: github.event_name == 'push'
+    needs: test
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
