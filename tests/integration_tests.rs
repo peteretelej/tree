@@ -570,6 +570,7 @@ fn test_fromfile_prune_filters_excluded_dirs() {
         .stdout
         .clone();
 
+    println!("{:?}", String::from_utf8_lossy(&output));
     assert!(output_contains(&output, "src"));
     assert!(output_contains(&output, "data.txt"));
     assert!(output_not_contains(&output, "cache"));

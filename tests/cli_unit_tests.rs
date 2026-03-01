@@ -14,7 +14,7 @@ fn create_test_options() -> TreeOptions {
         no_indent: false,
         print_size: true,
         human_readable: false,
-        pattern_glob: Some(Pattern::new("*.rs").unwrap()),
+        pattern_glob: vec![Pattern::new("*.rs").unwrap()],
         exclude_patterns: vec![Pattern::new("target").unwrap()],
         color: false,
         no_color: true,
@@ -47,7 +47,7 @@ fn test_tree_options_construction() {
     assert!(!options.no_indent);
     assert!(options.print_size);
     assert!(!options.human_readable);
-    assert!(options.pattern_glob.is_some());
+    assert!(!options.pattern_glob.is_empty());
     assert!(!options.exclude_patterns.is_empty());
     assert!(!options.color);
     assert!(options.no_color);
@@ -74,7 +74,7 @@ fn test_tree_options_defaults() {
         no_indent: false,
         print_size: false,
         human_readable: false,
-        pattern_glob: None,
+        pattern_glob: vec![],
         exclude_patterns: vec![],
         color: false,
         no_color: false,
@@ -98,7 +98,7 @@ fn test_tree_options_defaults() {
     assert!(!options.all_files);
     assert_eq!(options.level, None);
     assert!(!options.full_path);
-    assert!(options.pattern_glob.is_none());
+    assert!(options.pattern_glob.is_empty());
     assert!(options.exclude_patterns.is_empty());
     assert_eq!(options.output_file, None);
     assert_eq!(options.file_limit, None);
@@ -146,7 +146,7 @@ fn test_conflicting_options() {
 
     // Dir only with patterns
     options.dir_only = true;
-    options.pattern_glob = Some(Pattern::new("*.rs").unwrap());
+    options.pattern_glob = vec![Pattern::new("*.rs").unwrap()];
     // Should work together
 }
 
