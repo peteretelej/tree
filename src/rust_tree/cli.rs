@@ -71,7 +71,7 @@ pub struct Cli {
         long = "pattern",
         help = "List only those files that match the wild-card pattern."
     )]
-    pub pattern: Option<String>,
+    pub pattern: Vec<String>,
 
     #[arg(
         short = 'I',
@@ -178,14 +178,16 @@ pub struct Cli {
 
 /// Convert CLI arguments to TreeOptions
 pub fn cli_to_options(cli: &Cli) -> Result<TreeOptions, String> {
-    let pattern_glob: Option<Pattern> = cli
+    // split each `-P` / -I` argument on '|' and parse each fragment individually.
+    let pattern_glob: Vec<Pattern> = cli
         .pattern
-        .as_ref()
+        .iter()
+        .flat_map(|s| s.split('|'))
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
         .map(|pattern| parse_glob_pattern(pattern))
-        .transpose()?;
+        .collect::<Result<Vec<_>, _>>()?;
 
-    // `glob::Pattern` does not support pipe-separated alternatives (e.g. "src|docs"),
-    // so split each `-I` argument on '|' and parse each fragment individually.
     let exclude_patterns: Vec<Pattern> = cli
         .exclude
         .iter()
@@ -276,7 +278,7 @@ mod tests {
             no_indent: false,
             print_size: false,
             human_readable: false,
-            pattern: None,
+            pattern: vec![],
             exclude: vec![],
             full_path: false,
             color: false,
@@ -301,7 +303,7 @@ mod tests {
         assert!(!options.all_files);
         assert!(options.level.is_none());
         assert!(!options.dir_only);
-        assert!(options.pattern_glob.is_none());
+        assert!(options.pattern_glob.is_empty());
         assert!(options.exclude_patterns.is_empty());
     }
 
@@ -315,7 +317,7 @@ mod tests {
             no_indent: false,
             print_size: true,
             human_readable: true,
-            pattern: Some("*.rs".to_string()),
+            pattern: vec!["*.rs".to_string()],
             exclude: vec!["target".to_string()],
             full_path: true,
             color: true,
@@ -341,7 +343,7 @@ mod tests {
         assert_eq!(options.level, Some(2));
         assert!(options.print_size);
         assert!(options.human_readable);
-        assert!(options.pattern_glob.is_some());
+        assert!(!options.pattern_glob.is_empty());
         assert!(!options.exclude_patterns.is_empty());
         assert!(options.full_path);
         assert!(options.color);
@@ -368,7 +370,7 @@ mod tests {
             no_indent: false,
             print_size: true,
             human_readable: true,
-            pattern: Some("*.rs".to_string()),
+            pattern: vec!["*.rs".to_string()],
             full_path: true,
             color: true,
             no_color: false,
@@ -404,7 +406,7 @@ mod tests {
             no_indent: false,
             print_size: false,
             human_readable: false,
-            pattern: Some("[".to_string()), // Invalid pattern
+            pattern: vec!["[".to_string()], // Invalid pattern
             exclude: vec![],
             full_path: false,
             color: false,
