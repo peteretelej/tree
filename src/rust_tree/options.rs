@@ -8,7 +8,7 @@ pub struct TreeOptions {
     pub no_indent: bool,
     pub print_size: bool,
     pub human_readable: bool,
-    pub pattern_glob: Option<Pattern>,
+    pub pattern_glob: Vec<Pattern>,
     pub match_dirs: bool,
     pub exclude_patterns: Vec<Pattern>,
     pub color: bool,
