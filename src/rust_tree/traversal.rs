@@ -103,14 +103,18 @@ fn should_skip_entry(
         }
     }
 
-    if let Some(pattern) = &options.pattern_glob {
-        if !path.is_dir() && !parent_matched && !file_name.is_some_and(|name| pattern.matches(name))
-        {
+    if !path.is_dir() && !parent_matched && !options.pattern_glob.is_empty() {
+        let matches_any = file_name.is_some_and(|name| {
+            options.pattern_glob.iter().any(|p| p.matches(name))
+        });
+
+        if !matches_any {
             return Ok(true);
         }
     }
 
     if options.dir_only && !path.is_dir() {
+
         return Ok(true);
     }
 
@@ -256,7 +260,10 @@ fn format_entry_line(
 }
 
 fn has_pattern_filter(options: &TreeOptions) -> bool {
-    options.pattern_glob.is_some() || !options.exclude_patterns.is_empty()
+    // since we look for a valid pattern or no empty exclude pattern 
+    // ie evals to true of either inclusion or exclusion pattern is applied
+    //  options.pattern_glob.is_some() || !options.exclude_patterns.is_empty()
+    !options.pattern_glob.is_empty() || !options.exclude_patterns.is_empty()
 }
 
 fn should_skip_dir_recursion(path: &Path, depth: usize, options: &TreeOptions) -> bool {
@@ -281,12 +288,19 @@ fn should_skip_dir_recursion(path: &Path, depth: usize, options: &TreeOptions) -
 }
 
 fn dir_matches_pattern(path: &Path, options: &TreeOptions) -> bool {
-    options.match_dirs
-        && options.pattern_glob.as_ref().is_some_and(|pattern| {
-            path.file_name()
-                .and_then(|n| n.to_str())
-                .is_some_and(|name| pattern.matches(name))
-        })
+    if !options.match_dirs {
+        return false;
+    }
+
+    let name = match path.file_name().and_then(|n| n.to_str()) {
+        Some(n) => n,
+        None => return false,
+    };
+
+    options
+        .pattern_glob
+        .iter()
+        .any(|pattern| pattern.matches(name))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -337,6 +351,8 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
             return Err(e);
         }
     };
+
+
 
     // --- 2. Sort Entries ---
     if options.dirs_first {
@@ -511,7 +527,7 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
 ///     no_indent: false,
 ///     print_size: false,
 ///     human_readable: false,
-///     pattern_glob: None,
+///     pattern_glob: vec![],
 ///     match_dirs: false,
 ///     exclude_patterns: vec![],
 ///     color: false,
@@ -531,7 +547,6 @@ pub fn list_directory<P: AsRef<Path>>(path: P, options: &TreeOptions) -> std::io
 ///     prune: false,
 /// };
 /// let tree_output = list_directory_as_string(".", &options).unwrap();
-/// println!("{}", tree_output);
 /// ```
 pub fn list_directory_as_string<P: AsRef<Path>>(
     path: P,
@@ -572,8 +587,8 @@ fn list_from_input_with_writer<W: Write>(
     options: &TreeOptions,
     writer: W,
 ) -> std::io::Result<()> {
-    let lines = read_file_listing(input_path)?;
-    let entries = parse_file_listing(lines);
+    let lines = read_file_listing(input_path)?; 
+    let entries = parse_file_listing(lines); 
     let virtual_tree = build_virtual_tree(entries, options);
     display_virtual_tree_with_writer(virtual_tree, options, writer)
 }
@@ -757,11 +772,8 @@ fn display_virtual_entries<W: Write>(
                 } else {
                     &entry.path
                 };
-                let child_matched = options.match_dirs
-                    && options
-                        .pattern_glob
-                        .as_ref()
-                        .is_some_and(|pattern| pattern.matches(filename));
+                let path = Path::new(&entry.path);
+                let child_matched = dir_matches_pattern(&path, options);
                 let has_content = if let Some(children) = all_children.get(&entry.path) {
                     let mut probe_stats = (0u32, 0u32);
                     display_virtual_entries(
@@ -802,11 +814,8 @@ fn display_virtual_entries<W: Write>(
             } else {
                 &entry.path
             };
-            let child_parent_matched = options.match_dirs
-                && options
-                    .pattern_glob
-                    .as_ref()
-                    .is_some_and(|pattern| pattern.matches(filename));
+            let path = Path::new(&entry.path);
+            let child_parent_matched = dir_matches_pattern(&path, options);
 
             stats.0 += 1;
             display_virtual_entry(writer, entry, options, indent_state, is_last, icon_manager)?;
@@ -913,6 +922,7 @@ fn should_skip_virtual_entry(
     options: &TreeOptions,
     parent_matched: bool,
 ) -> std::io::Result<bool> {
+
     let filename = if let Some(pos) = entry.path.rfind('/') {
         &entry.path[pos + 1..]
     } else {
@@ -930,8 +940,14 @@ fn should_skip_virtual_entry(
         }
     }
 
-    if let Some(include_pattern) = &options.pattern_glob {
-        if !entry.is_dir && !parent_matched && !include_pattern.matches(filename) {
+    if entry.is_dir{
+        return Ok(false);
+    }
+
+    if !parent_matched && !options.pattern_glob.is_empty() {
+        let matches_any = options.pattern_glob.iter().any(|p| p.matches(filename));
+
+        if !matches_any {
             return Ok(true);
         }
     }
