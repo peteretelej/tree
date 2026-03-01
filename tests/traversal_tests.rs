@@ -1132,7 +1132,7 @@ fn test_dir_only_prune_no_op() {
 
     let mut options_prune = create_default_options();
     options_prune.dir_only = true;
-    options_no_prune.pattern_glob = vec![Pattern::new("match*").unwrap()];
+    options_prune.pattern_glob = vec![Pattern::new("match*").unwrap()];
     options_prune.match_dirs = true;
     options_prune.prune = true;
 
