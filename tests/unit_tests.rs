@@ -17,7 +17,7 @@ fn create_basic_options() -> TreeOptions {
         no_indent: false,
         print_size: false,
         human_readable: false,
-        pattern_glob: None,
+        pattern_glob: vec![],
         exclude_patterns: vec![],
         color: false,
         no_color: false,
@@ -88,10 +88,10 @@ fn test_list_directory_with_patterns() {
     let temp_dir = create_test_dir();
 
     let mut options = create_basic_options();
-    options.pattern_glob = Some(Pattern::new("*.md").unwrap());
+    options.pattern_glob = vec![Pattern::new("*.md").unwrap()];
     assert!(list_directory(temp_dir.path(), &options).is_ok());
 
-    options.pattern_glob = None;
+    options.pattern_glob = vec![];
     options.exclude_patterns = vec![Pattern::new("*.rs").unwrap()];
     assert!(list_directory(temp_dir.path(), &options).is_ok());
 }
