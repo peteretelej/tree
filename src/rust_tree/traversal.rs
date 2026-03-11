@@ -763,13 +763,13 @@ fn display_virtual_entries<W: Write>(
                 if should_skip_virtual_entry(entry, options, parent_matched)? {
                     return Ok(false);
                 }
-                let filename = if let Some(pos) = entry.path.rfind('/') {
+                let _filename = if let Some(pos) = entry.path.rfind('/') {
                     &entry.path[pos + 1..]
                 } else {
                     &entry.path
                 };
                 let path = Path::new(&entry.path);
-                let child_matched = dir_matches_pattern(&path, options);
+                let child_matched = dir_matches_pattern(path, options);
                 let has_content = if let Some(children) = all_children.get(&entry.path) {
                     let mut probe_stats = (0u32, 0u32);
                     display_virtual_entries(
@@ -805,13 +805,13 @@ fn display_virtual_entries<W: Write>(
         emit_idx += 1;
 
         if entry.is_dir {
-            let filename = if let Some(pos) = entry.path.rfind('/') {
+            let _filename = if let Some(pos) = entry.path.rfind('/') {
                 &entry.path[pos + 1..]
             } else {
                 &entry.path
             };
             let path = Path::new(&entry.path);
-            let child_parent_matched = dir_matches_pattern(&path, options);
+            let child_parent_matched = dir_matches_pattern(path, options);
 
             stats.0 += 1;
             display_virtual_entry(writer, entry, options, indent_state, is_last, icon_manager)?;

@@ -185,7 +185,7 @@ pub fn cli_to_options(cli: &Cli) -> Result<TreeOptions, String> {
         .flat_map(|s| s.split('|'))
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())
-        .map(|pattern| parse_glob_pattern(pattern))
+        .map(parse_glob_pattern)
         .collect::<Result<Vec<_>, _>>()?;
 
     let exclude_patterns: Vec<Pattern> = cli
