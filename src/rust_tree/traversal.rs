@@ -104,9 +104,8 @@ fn should_skip_entry(
     }
 
     if !path.is_dir() && !parent_matched && !options.pattern_glob.is_empty() {
-        let matches_any = file_name.is_some_and(|name| {
-            options.pattern_glob.iter().any(|p| p.matches(name))
-        });
+        let matches_any =
+            file_name.is_some_and(|name| options.pattern_glob.iter().any(|p| p.matches(name)));
 
         if !matches_any {
             return Ok(true);
@@ -114,7 +113,6 @@ fn should_skip_entry(
     }
 
     if options.dir_only && !path.is_dir() {
-
         return Ok(true);
     }
 
@@ -260,7 +258,7 @@ fn format_entry_line(
 }
 
 fn has_pattern_filter(options: &TreeOptions) -> bool {
-    // since we look for a valid pattern or no empty exclude pattern 
+    // since we look for a valid pattern or no empty exclude pattern
     // ie evals to true of either inclusion or exclusion pattern is applied
     //  options.pattern_glob.is_some() || !options.exclude_patterns.is_empty()
     !options.pattern_glob.is_empty() || !options.exclude_patterns.is_empty()
@@ -351,8 +349,6 @@ pub fn traverse_directory<P: AsRef<Path>, W: Write>(
             return Err(e);
         }
     };
-
-
 
     // --- 2. Sort Entries ---
     if options.dirs_first {
@@ -587,8 +583,8 @@ fn list_from_input_with_writer<W: Write>(
     options: &TreeOptions,
     writer: W,
 ) -> std::io::Result<()> {
-    let lines = read_file_listing(input_path)?; 
-    let entries = parse_file_listing(lines); 
+    let lines = read_file_listing(input_path)?;
+    let entries = parse_file_listing(lines);
     let virtual_tree = build_virtual_tree(entries, options);
     display_virtual_tree_with_writer(virtual_tree, options, writer)
 }
@@ -922,7 +918,6 @@ fn should_skip_virtual_entry(
     options: &TreeOptions,
     parent_matched: bool,
 ) -> std::io::Result<bool> {
-
     let filename = if let Some(pos) = entry.path.rfind('/') {
         &entry.path[pos + 1..]
     } else {
@@ -940,7 +935,7 @@ fn should_skip_virtual_entry(
         }
     }
 
-    if entry.is_dir{
+    if entry.is_dir {
         return Ok(false);
     }
 
