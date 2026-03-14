@@ -13,7 +13,7 @@ fn default_options() -> TreeOptions {
         no_indent: false,
         print_size: false,
         human_readable: false,
-        pattern_glob: None,
+        pattern_glob: vec![],
         exclude_patterns: vec![],
         color: false,
         no_color: false,
@@ -364,7 +364,7 @@ fn prune_plus_gitignore() {
 
     let mut opts = gitignore_options();
     opts.all_files = true;
-    opts.pattern_glob = Some(Pattern::new("*.rs").unwrap());
+    opts.pattern_glob = vec![Pattern::new("*.rs").unwrap()];
     opts.prune = true;
 
     let output = list_directory_as_string(p, &opts).unwrap();
@@ -391,7 +391,7 @@ fn pattern_plus_gitignore() {
 
     let mut opts = gitignore_options();
     opts.all_files = true;
-    opts.pattern_glob = Some(Pattern::new("*.log").unwrap());
+    opts.pattern_glob = vec![Pattern::new("*.log").unwrap()];
 
     let output = list_directory_as_string(p, &opts).unwrap();
     assert!(
@@ -412,7 +412,7 @@ fn matchdirs_plus_gitignore() {
 
     let mut opts = gitignore_options();
     opts.all_files = true;
-    opts.pattern_glob = Some(Pattern::new("mymod").unwrap());
+    opts.pattern_glob = vec![Pattern::new("mymod").unwrap()];
     opts.match_dirs = true;
 
     let output = list_directory_as_string(p, &opts).unwrap();
