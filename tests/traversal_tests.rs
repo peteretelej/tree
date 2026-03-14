@@ -57,6 +57,7 @@ fn create_default_options() -> TreeOptions {
         icons: false,
         prune: false,
         match_dirs: false,
+        gitignore: false,
     }
 }
 

@@ -174,6 +174,12 @@ pub struct Cli {
         help = "Include directory names in -P pattern matching. Matched directories show all contents."
     )]
     pub match_dirs: bool,
+
+    #[arg(
+        long = "gitignore",
+        help = "Exclude entries matching .gitignore rules."
+    )]
+    pub gitignore: bool,
 }
 
 /// Convert CLI arguments to TreeOptions
@@ -223,6 +229,7 @@ pub fn cli_to_options(cli: &Cli) -> Result<TreeOptions, String> {
         from_file: cli.fromfile,
         icons: cli.icons,
         prune: cli.prune,
+        gitignore: cli.gitignore,
     })
 }
 
@@ -297,6 +304,7 @@ mod tests {
             icons: false,
             prune: false,
             match_dirs: false,
+            gitignore: false,
         };
 
         let options = cli_to_options(&cli).unwrap();
@@ -336,6 +344,7 @@ mod tests {
             icons: false,
             prune: false,
             match_dirs: false,
+            gitignore: false,
         };
 
         let options = cli_to_options(&cli).unwrap();
@@ -388,6 +397,7 @@ mod tests {
             icons: false,
             prune: false,
             match_dirs: false,
+            gitignore: false,
         };
 
         let options = cli_to_options(&cli).unwrap();
@@ -425,6 +435,7 @@ mod tests {
             icons: false,
             prune: false,
             match_dirs: false,
+            gitignore: false,
         };
 
         let result = cli_to_options(&cli);

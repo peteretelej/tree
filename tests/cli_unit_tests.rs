@@ -32,6 +32,7 @@ fn create_test_options() -> TreeOptions {
         icons: false,
         prune: false,
         match_dirs: false,
+        gitignore: false,
     }
 }
 
@@ -92,6 +93,7 @@ fn test_tree_options_defaults() {
         icons: false,
         prune: false,
         match_dirs: false,
+        gitignore: false,
     };
 
     // Test default values
