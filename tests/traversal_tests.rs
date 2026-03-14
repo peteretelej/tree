@@ -39,7 +39,7 @@ fn create_default_options() -> TreeOptions {
         no_indent: false,
         print_size: false,
         human_readable: false,
-        pattern_glob: None,
+        pattern_glob: vec![],
         exclude_patterns: vec![],
         color: false,
         no_color: false,
@@ -85,7 +85,7 @@ fn test_list_directory_with_all_files() {
 fn test_list_directory_with_pattern() {
     let temp_dir = create_test_directory();
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("*.rs").unwrap());
+    options.pattern_glob = vec![Pattern::new("*.rs").unwrap()];
 
     // Test that pattern filtering works without error
     let result = list_directory(temp_dir.path(), &options);
@@ -338,7 +338,7 @@ fn test_multiple_pattern_combinations() {
 
     for pattern_str in patterns {
         let mut options = create_default_options();
-        options.pattern_glob = Some(Pattern::new(pattern_str).unwrap());
+        options.pattern_glob = vec![Pattern::new(pattern_str).unwrap()];
         options.all_files = true; // Include hidden files for .* pattern
 
         let result = list_directory(temp_dir.path(), &options);
@@ -605,7 +605,7 @@ fn create_prune_test_directory() -> tempfile::TempDir {
 fn test_prune_with_pattern() {
     let temp_dir = create_prune_test_directory();
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("*.txt").unwrap());
+    options.pattern_glob = vec![Pattern::new("*.txt").unwrap()];
     options.prune = true;
 
     let result = list_directory_as_string(temp_dir.path(), &options);
@@ -684,7 +684,7 @@ fn test_prune_nested_directories() {
     fs::create_dir(temp_path.join("empty")).unwrap();
 
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("*.txt").unwrap());
+    options.pattern_glob = vec![Pattern::new("*.txt").unwrap()];
     options.prune = true;
 
     let result = list_directory_as_string(temp_dir.path(), &options);
@@ -744,7 +744,7 @@ fn create_matchdirs_test_directory() -> tempfile::TempDir {
 fn test_matchdirs_depth1_contents_shown() {
     let temp_dir = create_matchdirs_test_directory();
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.pattern_glob = vec![Pattern::new("fzf*").unwrap()];
     options.match_dirs = true;
 
     let result = list_directory_as_string(temp_dir.path(), &options);
@@ -764,7 +764,7 @@ fn test_matchdirs_depth1_contents_shown() {
 fn test_matchdirs_depth2_contents_not_shown() {
     let temp_dir = create_matchdirs_test_directory();
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.pattern_glob = vec![Pattern::new("fzf*").unwrap()];
     options.match_dirs = true;
 
     let result = list_directory_as_string(temp_dir.path(), &options);
@@ -792,7 +792,7 @@ fn test_matchdirs_depth2_contents_not_shown() {
 fn test_matchdirs_nested_match_shows_children() {
     let temp_dir = create_matchdirs_test_directory();
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.pattern_glob = vec![Pattern::new("fzf*").unwrap()];
     options.match_dirs = true;
 
     let result = list_directory_as_string(temp_dir.path(), &options);
@@ -812,7 +812,7 @@ fn test_matchdirs_nested_match_shows_children() {
 fn test_matchdirs_all_directories_shown() {
     let temp_dir = create_matchdirs_test_directory();
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.pattern_glob = vec![Pattern::new("fzf*").unwrap()];
     options.match_dirs = true;
 
     let result = list_directory_as_string(temp_dir.path(), &options);
@@ -838,7 +838,7 @@ fn test_matchdirs_with_prune_keeps_matched_empty() {
     fs::write(temp_path.join("other").join("file.rs"), "x").unwrap();
 
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.pattern_glob = vec![Pattern::new("fzf*").unwrap()];
     options.match_dirs = true;
     options.prune = true;
 
@@ -869,7 +869,7 @@ fn test_matchdirs_fromfile_depth1_contents_shown() {
     fs::write(&listing_file, content).unwrap();
 
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.pattern_glob = vec![Pattern::new("fzf*").unwrap()];
     options.match_dirs = true;
     options.from_file = true;
 
@@ -895,7 +895,7 @@ fn test_matchdirs_fromfile_nested_match_shows_children() {
     fs::write(&listing_file, content).unwrap();
 
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.pattern_glob = vec![Pattern::new("fzf*").unwrap()];
     options.match_dirs = true;
     options.from_file = true;
 
@@ -926,7 +926,7 @@ fn test_matchdirs_fromfile_prune_keeps_matched() {
     fs::write(&listing_file, content).unwrap();
 
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("fzf*").unwrap());
+    options.pattern_glob = vec![Pattern::new("fzf*").unwrap()];
     options.match_dirs = true;
     options.prune = true;
     options.from_file = true;
@@ -961,7 +961,7 @@ fn test_matchdirs_depth1_dir_shows_children() {
     .unwrap();
 
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("*_mod").unwrap());
+    options.pattern_glob = vec![Pattern::new("*_mod").unwrap()];
     options.match_dirs = true;
 
     let result = list_directory_as_string(temp_dir.path(), &options);
@@ -991,7 +991,7 @@ fn test_matchdirs_depth2_dir_shows_children() {
     .unwrap();
 
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("*_mod").unwrap());
+    options.pattern_glob = vec![Pattern::new("*_mod").unwrap()];
     options.match_dirs = true;
 
     let result = list_directory_as_string(temp_dir.path(), &options);
@@ -1021,7 +1021,7 @@ fn test_matchdirs_nested_matched_dirs() {
     .unwrap();
 
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("*_mod").unwrap());
+    options.pattern_glob = vec![Pattern::new("*_mod").unwrap()];
     options.match_dirs = true;
 
     let result = list_directory_as_string(temp_dir.path(), &options);
@@ -1051,7 +1051,7 @@ fn test_matchdirs_no_cascade() {
     .unwrap();
 
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("*_mod").unwrap());
+    options.pattern_glob = vec![Pattern::new("*_mod").unwrap()];
     options.match_dirs = true;
 
     let result = list_directory_as_string(temp_dir.path(), &options);
@@ -1077,7 +1077,7 @@ fn test_prune_correct_last_connector() {
     fs::write(temp_path.join("keep").join("match.rs"), "x").unwrap();
 
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("*.rs").unwrap());
+    options.pattern_glob = vec![Pattern::new("*.rs").unwrap()];
     options.prune = true;
 
     let result = list_directory_as_string(temp_dir.path(), &options);
@@ -1127,12 +1127,12 @@ fn test_dir_only_prune_no_op() {
 
     let mut options_no_prune = create_default_options();
     options_no_prune.dir_only = true;
-    options_no_prune.pattern_glob = Some(Pattern::new("match*").unwrap());
+    options_no_prune.pattern_glob = vec![Pattern::new("match*").unwrap()];
     options_no_prune.match_dirs = true;
 
     let mut options_prune = create_default_options();
     options_prune.dir_only = true;
-    options_prune.pattern_glob = Some(Pattern::new("match*").unwrap());
+    options_prune.pattern_glob = vec![Pattern::new("match*").unwrap()];
     options_prune.match_dirs = true;
     options_prune.prune = true;
 
@@ -1154,7 +1154,7 @@ fn test_matchdirs_fromfile_depth1_shows_children() {
     fs::write(&listing_file, content).unwrap();
 
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("*_mod").unwrap());
+    options.pattern_glob = vec![Pattern::new("*_mod").unwrap()];
     options.match_dirs = true;
     options.from_file = true;
 
@@ -1177,7 +1177,7 @@ fn test_matchdirs_fromfile_no_cascade() {
     fs::write(&listing_file, content).unwrap();
 
     let mut options = create_default_options();
-    options.pattern_glob = Some(Pattern::new("*_mod").unwrap());
+    options.pattern_glob = vec![Pattern::new("*_mod").unwrap()];
     options.match_dirs = true;
     options.from_file = true;
 
@@ -1464,7 +1464,7 @@ fn test_virtual_tree_exclude_pattern() {
 fn test_virtual_tree_pattern_prune() {
     let (_td, listing_file) = fromfile_listing();
     let mut options = fromfile_options();
-    options.pattern_glob = Some(Pattern::new("*.rs").unwrap());
+    options.pattern_glob = vec![Pattern::new("*.rs").unwrap()];
     options.prune = true;
 
     let output = list_directory_as_string(&listing_file, &options).unwrap();

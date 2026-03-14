@@ -162,7 +162,7 @@ fn test_file_sizes() {
 }
 
 #[test]
-fn test_pattern_matching() {
+fn test_include_pattern_matching() {
     let temp_dir = create_test_structure();
 
     // Include pattern
@@ -177,7 +177,172 @@ fn test_pattern_matching() {
     assert!(output_contains(&output_include, "README.md"));
     assert!(output_contains(&output_include, "guide.md"));
     assert!(output_not_contains(&output_include, "main.rs"));
+    assert!(output_not_contains(&output_include, ".gitignore"));
 
+    // Pipe-separated include pattern
+    let output_pipe_include = cmd()
+        .args(["-P", "src|docs", temp_dir.path().to_str().unwrap()])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    // since -P wild card pattern only applies to files
+    // our output should just contain the dir names
+    // since the prune flag wasn't provided
+    assert!(output_contains(&output_pipe_include, "src"));
+    assert!(output_contains(&output_pipe_include, "docs"));
+    assert!(output_contains(&output_pipe_include, "tests"));
+
+    assert!(output_not_contains(&output_pipe_include, "README.md"));
+    assert!(output_not_contains(&output_pipe_include, "guide.md"));
+    assert!(output_not_contains(&output_pipe_include, "main.rs"));
+    assert!(output_not_contains(&output_pipe_include, ".gitignore"));
+
+    let output_pipe_include = cmd()
+        .args([
+            "--prune",
+            "-P",
+            "src|docs",
+            temp_dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    // same as above but with prune, output should be empty
+    assert!(output_not_contains(&output_pipe_include, "src"));
+    assert!(output_not_contains(&output_pipe_include, "docs"));
+    assert!(output_not_contains(&output_pipe_include, "tests"));
+
+    assert!(output_not_contains(&output_pipe_include, "README.md"));
+    assert!(output_not_contains(&output_pipe_include, "guide.md"));
+    assert!(output_not_contains(&output_pipe_include, "main.rs"));
+    assert!(output_not_contains(&output_pipe_include, ".gitignore"));
+
+    let output_pipe_include = cmd()
+        .args([
+            "--prune",
+            "-P",
+            "src|docs",
+            "--matchdirs",
+            temp_dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    // pattern now applys to dirs as well
+    assert!(output_contains(&output_pipe_include, "src"));
+    assert!(output_contains(&output_pipe_include, "docs"));
+    assert!(output_contains(&output_pipe_include, "guide.md"));
+    assert!(output_contains(&output_pipe_include, "main.rs"));
+
+    assert!(output_not_contains(&output_pipe_include, "tests"));
+    assert!(output_not_contains(&output_pipe_include, "README.md"));
+    assert!(output_not_contains(&output_pipe_include, ".gitignore"));
+
+    let output_include = cmd()
+        .args(["--prune", "-P", "*.rs", temp_dir.path().to_str().unwrap()])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    // pattern applies to only files
+    assert!(output_contains(&output_include, "src"));
+    assert!(output_contains(&output_include, "tests"));
+    assert!(output_contains(&output_include, "main.rs"));
+    assert!(output_contains(&output_include, "test.rs"));
+
+    assert!(output_not_contains(&output_include, "docs"));
+    assert!(output_not_contains(&output_include, "README.md"));
+    assert!(output_not_contains(&output_include, ".gitignore"));
+
+    let output_pipe_include = cmd()
+        .args([
+            "--prune",
+            "-P",
+            "*.rs|*.md",
+            temp_dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    // patterns applies to only files
+    assert!(output_contains(&output_pipe_include, "src"));
+    assert!(output_contains(&output_pipe_include, "tests"));
+    assert!(output_contains(&output_pipe_include, "main.rs"));
+    assert!(output_contains(&output_pipe_include, "test.rs"));
+
+    assert!(output_contains(&output_pipe_include, "docs"));
+    assert!(output_contains(&output_pipe_include, "README.md"));
+    assert!(output_not_contains(&output_pipe_include, ".gitignore"));
+
+    // Leading/trailing pipes should still include files
+    let output_pipe_include_edge = cmd()
+        .args([
+            "--prune",
+            "-P",
+            "|*.rs|*.md|",
+            temp_dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    assert!(output_contains(&output_pipe_include_edge, "src"));
+    assert!(output_contains(&output_pipe_include_edge, "tests"));
+    assert!(output_contains(&output_pipe_include_edge, "main.rs"));
+    assert!(output_contains(&output_pipe_include_edge, "test.rs"));
+
+    assert!(output_contains(&output_pipe_include_edge, "docs"));
+    assert!(output_contains(&output_pipe_include_edge, "README.md"));
+    assert!(output_not_contains(&output_pipe_include_edge, ".gitignore"));
+
+    // Consecutive pipes (empty segment between them) should be ignored
+    let output_pipe_include_consecutive = cmd()
+        .args([
+            "--prune",
+            "-P",
+            "*.rs||*.md",
+            temp_dir.path().to_str().unwrap(),
+        ])
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    assert!(output_contains(&output_pipe_include_consecutive, "src"));
+    assert!(output_contains(&output_pipe_include_consecutive, "tests"));
+    assert!(output_contains(&output_pipe_include_consecutive, "main.rs"));
+    assert!(output_contains(&output_pipe_include_consecutive, "test.rs"));
+
+    assert!(output_contains(&output_pipe_include_consecutive, "docs"));
+    assert!(output_contains(
+        &output_pipe_include_consecutive,
+        "README.md"
+    ));
+    assert!(output_not_contains(
+        &output_pipe_include_consecutive,
+        ".gitignore"
+    ));
+}
+#[test]
+fn test_exclude_pattern_matching() {
+    let temp_dir = create_test_structure();
     // Exclude pattern
     let output_exclude = cmd()
         .args(["-I", "*.rs", temp_dir.path().to_str().unwrap()])
@@ -220,8 +385,8 @@ fn test_pattern_matching() {
     assert!(output_not_contains(&output_pipe_edges, "docs"));
 
     // Other entries should still exist
-    assert!(output_contains(&output_pipe_exclude, "tests"));
-    assert!(output_contains(&output_pipe_exclude, "README.md"));
+    assert!(output_contains(&output_pipe_edges, "tests"));
+    assert!(output_contains(&output_pipe_edges, "README.md"));
 
     // Consecutive pipes (empty segment between them) should be ignored
     let output_double_pipe = cmd()
@@ -235,8 +400,8 @@ fn test_pattern_matching() {
     assert!(output_not_contains(&output_double_pipe, "docs"));
 
     // Other entries should still exist
-    assert!(output_contains(&output_pipe_exclude, "tests"));
-    assert!(output_contains(&output_pipe_exclude, "README.md"));
+    assert!(output_contains(&output_double_pipe, "tests"));
+    assert!(output_contains(&output_double_pipe, "README.md"));
 }
 
 #[test]
