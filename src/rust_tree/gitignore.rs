@@ -116,7 +116,7 @@ impl GitignoreRules {
             let match_path = if rule.anchored {
                 match rel_path.strip_prefix(&rule.source_dir) {
                     Ok(p) => p,
-                    Err(_) => rel_path,
+                    Err(_) => continue,
                 }
             } else {
                 rel_path

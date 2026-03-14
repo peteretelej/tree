@@ -395,6 +395,7 @@ mod tests {
             icons: false,
             prune: false,
             match_dirs: false,
+            gitignore: false,
         };
 
         let options = cli_to_options(&cli).unwrap();
