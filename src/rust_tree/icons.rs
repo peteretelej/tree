@@ -185,7 +185,7 @@ impl IconManager {
     /// Icon lookup for an entry whose type is already known. `--fromfile`
     /// entries describe paths that need not exist locally, so `path.is_dir()`
     /// cannot be trusted there.
-    pub fn get_icon_for_entry(&self, path: &Path, is_dir: bool) -> &str {
+    pub(crate) fn get_icon_for_entry(&self, path: &Path, is_dir: bool) -> &str {
         if let Some(name) = path.file_name().and_then(|s| s.to_str()) {
             let key = name.to_ascii_lowercase();
             if let Some(icon) = self.theme.well_known.get(&key) {

@@ -242,15 +242,7 @@ enum Parity {
 #[case("-P *.rs", Parity::Same)]
 #[case("-I *.log", Parity::Same)]
 #[case("--prune -P *.rs", Parity::Same)]
-#[case(
-    "-A",
-    Parity::Known(
-        "filesystem -A swaps the is_last glyphs: last children get the '+---' tee \
-         and non-last children get the '\\---' corner, the reverse of the unicode \
-         arm directly above it in format_entry_line. The virtual renderer emits \
-         GNU's '|--'/'`--' correctly, so the filesystem side is the one to fix."
-    )
-)]
+#[case("-A", Parity::Same)]
 #[case(
     "-s",
     Parity::Known(

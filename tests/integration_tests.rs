@@ -416,9 +416,36 @@ fn test_ascii_mode() {
         .stdout
         .clone();
 
-    // ASCII mode should use | and ` instead of Unicode box chars
     let output_str = String::from_utf8_lossy(&output);
-    assert!(output_str.contains("|") || output_str.contains("`") || output_str.contains("+"));
+
+    assert!(
+        !output_str.contains('\u{251c}')
+            && !output_str.contains('\u{2514}')
+            && !output_str.contains('\u{2502}'),
+        "-A must not emit Unicode box-drawing characters:\n{output_str}"
+    );
+
+    // Only the final child of a level gets the corner connector; the rest get
+    // the tee. Asserting that split -- rather than "some connector appears" --
+    // is what catches the two glyphs being swapped.
+    let top_level: Vec<&str> = output_str
+        .lines()
+        .filter(|l| l.starts_with("|-- ") || l.starts_with("`-- "))
+        .collect();
+    assert!(
+        top_level.len() > 1,
+        "fixture should produce several top-level entries:\n{output_str}"
+    );
+
+    let (last, rest) = top_level.split_last().unwrap();
+    assert!(
+        last.starts_with("`-- "),
+        "last entry should use the corner connector, got {last:?}"
+    );
+    assert!(
+        rest.iter().all(|l| l.starts_with("|-- ")),
+        "only the last entry should use the corner connector:\n{output_str}"
+    );
 }
 
 #[test]

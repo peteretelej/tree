@@ -204,15 +204,17 @@ pub fn parse_tar_verbose_line(line: &str) -> Option<FileEntry> {
     let is_dir = permissions.starts_with('d');
 
     // Size is typically at index 2
-    let size = if parts.len() > 2 {
-        parts[2].parse::<u64>().ok()
-    } else {
-        None
-    };
+    let size = parts[2].parse::<u64>().ok();
 
-    // Path is the last part (may contain spaces, so rejoin)
-    let path_start = line.rfind(' ')?;
-    let path = &line[path_start + 1..];
+    // The name runs from the 6th field to end of line. It cannot be recovered
+    // from `parts` because names may contain spaces, and it cannot be found by
+    // scanning back from the end because `tar` renders links as
+    // "<name> -> <target>" -- the entry is named by the link, not the target.
+    let name_field = &line[field_offset(line, 5)?..];
+    let path = name_field
+        .split_once(" -> ")
+        .map_or(name_field, |(name, _target)| name)
+        .trim_end();
 
     let clean_path = if is_dir && path.ends_with('/') {
         path.trim_end_matches('/')
@@ -225,6 +227,24 @@ pub fn parse_tar_verbose_line(line: &str) -> Option<FileEntry> {
         is_dir,
         size,
     })
+}
+
+/// Byte offset at which the `n`th (zero-based) whitespace-separated field of
+/// `line` begins, so trailing fields can be read verbatim rather than being
+/// reassembled from split parts.
+fn field_offset(line: &str, n: usize) -> Option<usize> {
+    let mut offset = 0;
+    let mut rest = line;
+    for _ in 0..n {
+        let field_start = rest.find(|c: char| !c.is_whitespace())?;
+        offset += field_start;
+        rest = &rest[field_start..];
+
+        let field_end = rest.find(char::is_whitespace)?;
+        offset += field_end;
+        rest = &rest[field_end..];
+    }
+    Some(offset + rest.find(|c: char| !c.is_whitespace())?)
 }
 
 pub fn parse_tar_simple_line(line: &str) -> Option<FileEntry> {

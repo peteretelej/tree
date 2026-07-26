@@ -179,11 +179,13 @@ fn format_entry_line(
     }
 
     // --- Line Prefix (├──, └──) ---
+    // ASCII glyphs match display_virtual_entry so that `--fromfile -A` and a
+    // filesystem walk of the same tree render identically.
     let line_prefix = match (options.no_indent, is_last, options.ascii) {
         (true, _, _) => "",
-        (false, true, true) => "+---",
+        (false, true, true) => "`-- ",
         (false, true, false) => "└── ",
-        (false, false, true) => "\\---",
+        (false, false, true) => "|-- ",
         (false, false, false) => "├── ",
     };
     line.push_str(line_prefix);
@@ -197,7 +199,10 @@ fn format_entry_line(
 
     // Add icon if enabled
     let display_name = if options.icons {
-        let icon = icon_manager.get_icon_for_entry(&path, file_type.is_dir());
+        // `entry.metadata()` does not traverse symlinks, so `file_type` reports
+        // a link as neither file nor dir. Resolve through the link instead, or
+        // a symlink to a directory draws the file icon.
+        let icon = icon_manager.get_icon_for_path(&path);
         format!("{icon} {name_part}")
     } else {
         name_part

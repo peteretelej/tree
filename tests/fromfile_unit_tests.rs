@@ -21,12 +21,32 @@ fn test_parse_tar_verbose_line() {
     assert!(!entry.is_dir);
     assert_eq!(entry.size, Some(123));
 
-    // Test symlink entry
-    let link_line = "lrwxrwxrwx user/group 11 2023-01-01 12:00 symlink";
+    // Test symlink entry. Real `tar -tvf` always renders a symlink as
+    // "<name> -> <target>", so the fixture must include the arrow.
+    let link_line = "lrwxrwxrwx user/group 0 2023-01-01 12:00 mylink -> ../elsewhere/target";
     let entry = parse_tar_verbose_line(link_line).unwrap();
-    assert_eq!(entry.path, "symlink");
+    assert_eq!(
+        entry.path, "mylink",
+        "the entry is named by the link, not by its target"
+    );
     assert!(!entry.is_dir);
-    assert_eq!(entry.size, Some(11));
+    assert_eq!(entry.size, Some(0));
+
+    // Names may contain spaces, so the name cannot be recovered by scanning
+    // back from the end of the line.
+    let spaced_line = "-rw-r--r-- user/group 12 2023-01-01 12:00 docs/my report v2.txt";
+    let entry = parse_tar_verbose_line(spaced_line).unwrap();
+    assert_eq!(
+        entry.path, "docs/my report v2.txt",
+        "a name containing spaces must survive intact"
+    );
+    assert_eq!(entry.size, Some(12));
+
+    // A directory whose name contains spaces still loses its trailing slash.
+    let spaced_dir = "drwxr-xr-x user/group 0 2023-01-01 12:00 my docs/";
+    let entry = parse_tar_verbose_line(spaced_dir).unwrap();
+    assert_eq!(entry.path, "my docs");
+    assert!(entry.is_dir);
 }
 
 #[test]
