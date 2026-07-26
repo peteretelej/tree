@@ -1335,8 +1335,29 @@ fn test_virtual_tree_display_options(#[case] option_name: &str) {
 
     match option_name {
         "icons" => {
-            assert!(output.contains("dir1"), "Should contain dir1");
-            assert!(output.contains("file1.rs"), "Should contain file1.rs");
+            // Assert the glyph, not the filename: a name-only assertion passes
+            // with icons off, or with every entry given the wrong icon.
+            let line_for = |name: &str| {
+                output
+                    .lines()
+                    .find(|l| l.ends_with(name))
+                    .unwrap_or_else(|| panic!("no line ending in {name:?} in:\n{output}"))
+            };
+            assert!(
+                line_for("dir1").contains('\u{1F4C1}'),
+                "virtual directories should use the directory icon, got: {:?}",
+                line_for("dir1")
+            );
+            assert!(
+                line_for("sub").contains('\u{1F4C1}'),
+                "nested virtual directories should use the directory icon, got: {:?}",
+                line_for("sub")
+            );
+            assert!(
+                !line_for("file1.rs").contains('\u{1F4C1}'),
+                "files should not use the directory icon, got: {:?}",
+                line_for("file1.rs")
+            );
         }
         "classify" => {
             assert!(output.contains("dir1/"), "Dirs should get trailing /");

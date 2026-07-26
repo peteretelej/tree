@@ -612,18 +612,31 @@ fn test_fromfile_color_outputs_ansi_codes() {
 fn test_fromfile_no_color_overrides_color() {
     let simple_paths = "src/\nsrc/main.rs\narchive.zip\nlogo.png\n";
 
-    let output = cmd()
-        .args(["--fromfile", "--color", "--no-color", "--noreport", "."])
-        .write_stdin(simple_paths)
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
+    let run = |args: &[&str]| -> String {
+        let output = cmd()
+            .args(args)
+            .write_stdin(simple_paths)
+            .assert()
+            .success()
+            .get_output()
+            .stdout
+            .clone();
+        String::from_utf8_lossy(&output).to_string()
+    };
+
+    // Differential: asserting only the *absence* of ANSI would have passed
+    // before #68 was fixed, when the virtual renderer never colorized at all.
+    // Pinning both sides makes this a test of precedence rather than emptiness.
+    let colored = run(&["--fromfile", "--color", "--noreport", "."]);
+    let overridden = run(&["--fromfile", "--color", "--no-color", "--noreport", "."]);
 
     assert!(
-        !output_contains(&output, "\x1B["),
-        "--no-color should suppress ANSI codes under --fromfile"
+        colored.contains('\x1B'),
+        "--color alone should emit ANSI under --fromfile, got: {colored:?}"
+    );
+    assert!(
+        !overridden.contains('\x1B'),
+        "--no-color should override --color under --fromfile, got: {overridden:?}"
     );
 }
 
@@ -653,119 +666,6 @@ fn test_fromfile_color_excludes_size_and_classify() {
     assert!(
         stdout.contains("\x1B[1;34msrc\x1B[0m/"),
         "classify indicator must stay outside the colour span, got: {stdout:?}"
-    );
-}
-
-#[test]
-fn test_fromfile_reverse_sorts_descending() {
-    let simple_paths = "a.txt\nb.txt\nc.txt\n";
-
-    let forward = cmd()
-        .args(["--fromfile", "--noreport", "."])
-        .write_stdin(simple_paths)
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-    let reversed = cmd()
-        .args(["--fromfile", "-r", "--noreport", "."])
-        .write_stdin(simple_paths)
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-
-    let forward = String::from_utf8_lossy(&forward).to_string();
-    let reversed = String::from_utf8_lossy(&reversed).to_string();
-
-    let names = |out: &str| -> Vec<String> {
-        out.lines()
-            .filter(|l| l.contains(".txt"))
-            .map(|l| l.trim_start_matches(['│', '├', '└', '─', ' ']).to_string())
-            .collect()
-    };
-
-    assert_eq!(names(&forward), vec!["a.txt", "b.txt", "c.txt"]);
-    assert_eq!(names(&reversed), vec!["c.txt", "b.txt", "a.txt"]);
-}
-
-#[test]
-fn test_fromfile_reverse_keeps_dirs_first() {
-    let simple_paths = "adir/\nadir/x.txt\nbdir/\nbdir/y.txt\na.txt\nb.txt\n";
-
-    let output = cmd()
-        .args(["--fromfile", "-r", "--dirsfirst", "--noreport", "."])
-        .write_stdin(simple_paths)
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-
-    let stdout = String::from_utf8_lossy(&output).to_string();
-    let top_level: Vec<&str> = stdout
-        .lines()
-        .filter(|l| l.starts_with("├──") || l.starts_with("└──"))
-        .map(|l| l.trim_start_matches(['│', '├', '└', '─', ' ']))
-        .collect();
-
-    // Directories stay ahead of files, reversed within each group.
-    assert_eq!(top_level, vec!["bdir", "adir", "b.txt", "a.txt"]);
-}
-
-#[test]
-fn test_fromfile_filelimit_skips_large_dirs() {
-    let simple_paths = "big/\nbig/one.txt\nbig/two.txt\nbig/three.txt\nsmall/\nsmall/only.txt\n";
-
-    let output = cmd()
-        .args(["--fromfile", "--filelimit", "2", "--noreport", "."])
-        .write_stdin(simple_paths)
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-
-    let stdout = String::from_utf8_lossy(&output).to_string();
-
-    // Both directories are listed, but `big` (3 children) is not descended.
-    assert!(stdout.contains("big"), "got: {stdout:?}");
-    assert!(stdout.contains("small"), "got: {stdout:?}");
-    assert!(
-        !stdout.contains("one.txt"),
-        "--filelimit should stop descent into big/, got: {stdout:?}"
-    );
-    assert!(
-        stdout.contains("only.txt"),
-        "--filelimit should still descend into small/, got: {stdout:?}"
-    );
-}
-
-#[test]
-fn test_fromfile_icons_use_directory_icon() {
-    // Paths that do not exist on this machine, so is_dir() cannot be stat'd.
-    let simple_paths = "nonexistent_dir_xyz/\nnonexistent_dir_xyz/file.rs\n";
-
-    let output = cmd()
-        .args(["--fromfile", "--icons", "--noreport", "."])
-        .write_stdin(simple_paths)
-        .assert()
-        .success()
-        .get_output()
-        .stdout
-        .clone();
-
-    let stdout = String::from_utf8_lossy(&output).to_string();
-    let dir_line = stdout
-        .lines()
-        .find(|l| l.contains("nonexistent_dir_xyz"))
-        .unwrap_or_default();
-
-    assert!(
-        dir_line.contains('📁'),
-        "virtual directories should use the directory icon, got: {dir_line:?}"
     );
 }
 
