@@ -579,6 +579,84 @@ fn test_fromfile_basic() {
 }
 
 #[test]
+fn test_fromfile_color_outputs_ansi_codes() {
+    let simple_paths = "src/\nsrc/main.rs\narchive.zip\nlogo.png\n";
+
+    let output = cmd()
+        .args(["--fromfile", "--color", "--noreport", "."])
+        .write_stdin(simple_paths)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let stdout = String::from_utf8_lossy(&output).to_string();
+
+    // Each type gets the same colour the filesystem renderer uses.
+    assert!(
+        stdout.contains("\x1B[1;34msrc\x1B[0m"),
+        "directories should be blue+bold under --fromfile --color, got: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\x1B[31marchive.zip\x1B[0m"),
+        "archives should be red under --fromfile --color, got: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\x1B[33mlogo.png\x1B[0m"),
+        "images should be yellow under --fromfile --color, got: {stdout:?}"
+    );
+}
+
+#[test]
+fn test_fromfile_no_color_overrides_color() {
+    let simple_paths = "src/\nsrc/main.rs\narchive.zip\nlogo.png\n";
+
+    let output = cmd()
+        .args(["--fromfile", "--color", "--no-color", "--noreport", "."])
+        .write_stdin(simple_paths)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    assert!(
+        !output_contains(&output, "\x1B["),
+        "--no-color should suppress ANSI codes under --fromfile"
+    );
+}
+
+#[test]
+fn test_fromfile_color_excludes_size_and_classify() {
+    // tar-style listing so entries carry sizes
+    let tar_listing = "drwxr-xr-x user/group 0 2023-01-01 12:00 src\n\
+                       -rw-r--r-- user/group 123 2023-01-01 12:00 archive.zip\n";
+
+    let output = cmd()
+        .args(["--fromfile", "--color", "-s", "-F", "--noreport", "."])
+        .write_stdin(tar_listing)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let stdout = String::from_utf8_lossy(&output).to_string();
+
+    // The colour span must wrap the name only; [size] and the classify '/'
+    // sit outside it, as they do in filesystem mode.
+    assert!(
+        stdout.contains("\x1B[31marchive.zip\x1B[0m"),
+        "size prefix must stay outside the colour span, got: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\x1B[1;34msrc\x1B[0m/"),
+        "classify indicator must stay outside the colour span, got: {stdout:?}"
+    );
+}
+
+#[test]
 fn test_fromfile_windows_paths() {
     // Test cross-platform path normalization
     let windows_paths = "src\\\nsrc\\main.rs\nsrc\\lib.rs\ntests\\\ntests\\test.rs\n";

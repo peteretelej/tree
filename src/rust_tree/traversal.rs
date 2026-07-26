@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use crate::rust_tree::display::colorize;
+use crate::rust_tree::display::{colorize, colorize_virtual_path};
 use crate::rust_tree::icons::IconManager;
 // Conditionally import the permissions formatter only on Unix
 #[cfg(unix)]
@@ -941,6 +941,12 @@ fn display_virtual_entry<W: Write>(
         display_name = format!("{icon} {display_name}");
     }
 
+    // Colorize the name before metadata is attached, so the size and classify
+    // markers stay outside the escape sequence (matches format_entry_line).
+    if !options.no_color && options.color {
+        display_name = colorize_virtual_path(Path::new(&entry.path), entry.is_dir, &display_name);
+    }
+
     // Add file type indicator
     if options.classify && entry.is_dir {
         display_name.push('/');
@@ -958,10 +964,7 @@ fn display_virtual_entry<W: Write>(
         }
     }
 
-    // Apply colorization (simplified for virtual entries)
-    let colored_name = display_name;
-
-    writeln!(writer, "{prefix}{colored_name}")?;
+    writeln!(writer, "{prefix}{display_name}")?;
     Ok(())
 }
 

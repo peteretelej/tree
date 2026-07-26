@@ -1,6 +1,7 @@
 use ansi_term::Colour::{Blue, Cyan, Green, Red, Yellow};
 use is_executable::IsExecutable;
 use std::fs;
+use std::path::Path;
 
 // Colorize the tree output based on the file type and extension.
 pub fn colorize(entry: &fs::DirEntry, text: &str) -> String {
@@ -9,16 +10,42 @@ pub fn colorize(entry: &fs::DirEntry, text: &str) -> String {
         Err(_) => return text.to_string(), // Return original text if file type fails
     };
 
+    let path = entry.path();
     // Use is_executable crate for cross-platform check
-    let is_exec = entry.path().is_executable();
+    let is_exec = path.is_executable();
+    let extension = path.extension().and_then(|ext| ext.to_str());
 
-    if file_type.is_dir() {
+    colorize_entry_name(
+        text,
+        file_type.is_dir(),
+        file_type.is_symlink(),
+        is_exec,
+        extension,
+    )
+}
+
+// Colorize an entry that has no filesystem metadata (--fromfile). Symlink and
+// executable state are unknown for parsed listings, so only directory and
+// extension rules apply.
+pub(crate) fn colorize_virtual_path(path: &Path, is_dir: bool, text: &str) -> String {
+    let extension = path.extension().and_then(|ext| ext.to_str());
+    colorize_entry_name(text, is_dir, false, false, extension)
+}
+
+fn colorize_entry_name(
+    text: &str,
+    is_dir: bool,
+    is_symlink: bool,
+    is_exec: bool,
+    extension: Option<&str>,
+) -> String {
+    if is_dir {
         Blue.bold().paint(text).to_string()
-    } else if file_type.is_symlink() {
+    } else if is_symlink {
         Cyan.paint(text).to_string()
     } else if is_exec {
         Green.paint(text).to_string()
-    } else if let Some(extension) = entry.path().extension().and_then(|ext| ext.to_str()) {
+    } else if let Some(extension) = extension {
         // Convert extension to lowercase once
         match extension.to_lowercase().as_str() {
             // Archives
