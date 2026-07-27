@@ -104,7 +104,7 @@ pub struct Cli {
     #[arg(
         short = 'A',
         long = "ascii",
-        help = "Turn on ANSI line graphics hack when printing the indentation lines."
+        help = "Use ASCII characters for the indentation lines instead of Unicode box drawing."
     )]
     pub ascii: bool,
 
