@@ -188,10 +188,7 @@ fn flag_changes_output(#[case] flag: &str, #[case] effect: Effect) {
         let plain = render(&fx, mode, "");
         let flagged = render(&fx, mode, flag);
 
-        let expect_change = match (mode, effect) {
-            (Mode::FromFile, Effect::FilesystemOnly(_)) => false,
-            _ => true,
-        };
+        let expect_change = !matches!((mode, effect), (Mode::FromFile, Effect::FilesystemOnly(_)));
 
         if expect_change {
             assert_ne!(

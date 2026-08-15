@@ -211,10 +211,14 @@ pub fn parse_tar_verbose_line(line: &str) -> Option<FileEntry> {
     // scanning back from the end because `tar` renders links as
     // "<name> -> <target>" -- the entry is named by the link, not the target.
     let name_field = &line[field_offset(line, 5)?..];
-    let path = name_field
-        .split_once(" -> ")
-        .map_or(name_field, |(name, _target)| name)
-        .trim_end();
+    let path = if permissions.starts_with('l') {
+        name_field
+            .split_once(" -> ")
+            .map_or(name_field, |(name, _target)| name)
+    } else {
+        name_field
+    }
+    .trim_end();
 
     let clean_path = if is_dir && path.ends_with('/') {
         path.trim_end_matches('/')

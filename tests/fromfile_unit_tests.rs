@@ -42,6 +42,12 @@ fn test_parse_tar_verbose_line() {
     );
     assert_eq!(entry.size, Some(12));
 
+    // Only symlink records use " -> " to separate the target. It is valid
+    // text in an ordinary filename and must not be truncated.
+    let arrow_file = "-rw-r--r-- user/group 12 2023-01-01 12:00 docs/report -> final.txt";
+    let entry = parse_tar_verbose_line(arrow_file).unwrap();
+    assert_eq!(entry.path, "docs/report -> final.txt");
+
     // A directory whose name contains spaces still loses its trailing slash.
     let spaced_dir = "drwxr-xr-x user/group 0 2023-01-01 12:00 my docs/";
     let entry = parse_tar_verbose_line(spaced_dir).unwrap();
