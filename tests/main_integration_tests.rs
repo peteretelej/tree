@@ -205,8 +205,17 @@ fn test_cli_ascii_mode() {
     assert!(output.status.success());
 
     let stdout_str = String::from_utf8(output.stdout).unwrap();
-    // Should use ASCII characters instead of Unicode
-    assert!(stdout_str.contains("|") || stdout_str.contains("\\") || stdout_str.contains("+"));
+    // Entries sort alphabetically, so file.txt is the non-last child (tee) and
+    // subdir is the last (corner). Pinning which glyph lands on which entry is
+    // what makes this test able to fail; asserting "a connector appears" cannot.
+    assert!(
+        stdout_str.contains("|-- file.txt"),
+        "non-last entry should use the tee connector:\n{stdout_str}"
+    );
+    assert!(
+        stdout_str.contains("`-- subdir"),
+        "last entry should use the corner connector:\n{stdout_str}"
+    );
 }
 
 #[test]

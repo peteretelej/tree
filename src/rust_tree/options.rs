@@ -1,5 +1,9 @@
 use glob::Pattern;
 
+/// `Default` exists so tests can write `TreeOptions { icons: true, ..Default::default() }`
+/// instead of restating all 26 fields; the full literal is already duplicated in
+/// six places and every new field breaks all of them.
+#[derive(Default)]
 pub struct TreeOptions {
     pub all_files: bool,
     pub level: Option<u32>,

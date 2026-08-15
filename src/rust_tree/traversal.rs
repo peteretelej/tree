@@ -9,7 +9,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 
-use crate::rust_tree::display::colorize;
+use crate::rust_tree::display::{colorize, colorize_virtual_path};
 use crate::rust_tree::icons::IconManager;
 // Conditionally import the permissions formatter only on Unix
 #[cfg(unix)]
@@ -179,11 +179,13 @@ fn format_entry_line(
     }
 
     // --- Line Prefix (├──, └──) ---
+    // ASCII glyphs match display_virtual_entry so that `--fromfile -A` and a
+    // filesystem walk of the same tree render identically.
     let line_prefix = match (options.no_indent, is_last, options.ascii) {
         (true, _, _) => "",
-        (false, true, true) => "+---",
+        (false, true, true) => "`-- ",
         (false, true, false) => "└── ",
-        (false, false, true) => "\\---",
+        (false, false, true) => "|-- ",
         (false, false, false) => "├── ",
     };
     line.push_str(line_prefix);
@@ -197,6 +199,9 @@ fn format_entry_line(
 
     // Add icon if enabled
     let display_name = if options.icons {
+        // `entry.metadata()` does not traverse symlinks, so `file_type` reports
+        // a link as neither file nor dir. Resolve through the link instead, or
+        // a symlink to a directory draws the file icon.
         let icon = icon_manager.get_icon_for_path(&path);
         format!("{icon} {name_part}")
     } else {
@@ -733,14 +738,20 @@ fn display_virtual_tree_with_writer<W: Write>(
     // Sort entries in each directory
     for child_list in children.values_mut() {
         child_list.sort_by(|a, b| {
-            if options.dirs_first {
-                match (a.is_dir, b.is_dir) {
-                    (true, false) => std::cmp::Ordering::Less,
-                    (false, true) => std::cmp::Ordering::Greater,
-                    _ => a.path.cmp(&b.path),
-                }
+            // --dirs-first groups regardless of sort direction; the filesystem
+            // renderer reverses within each group, so do the same here.
+            if options.dirs_first && a.is_dir != b.is_dir {
+                return if a.is_dir {
+                    std::cmp::Ordering::Less
+                } else {
+                    std::cmp::Ordering::Greater
+                };
+            }
+            let ordering = a.path.cmp(&b.path);
+            if options.reverse {
+                ordering.reverse()
             } else {
-                a.path.cmp(&b.path)
+                ordering
             }
         });
     }
@@ -787,6 +798,20 @@ fn display_virtual_tree_with_writer<W: Write>(
     Ok(())
 }
 
+/// Children to descend into for a virtual directory, or `None` when
+/// `--filelimit` says the directory has too many entries to expand.
+fn virtual_children<'a, 'b>(
+    entry: &FileEntry,
+    all_children: &'a std::collections::HashMap<String, Vec<&'b FileEntry>>,
+    options: &TreeOptions,
+) -> Option<&'a [&'b FileEntry]> {
+    let children = all_children.get(&entry.path)?;
+    match options.file_limit {
+        Some(limit) if children.len() > limit as usize => None,
+        _ => Some(children),
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn display_virtual_entries<W: Write>(
     writer: &mut W,
@@ -822,22 +847,23 @@ fn display_virtual_entries<W: Write>(
                 };
                 let path = Path::new(&entry.path);
                 let child_matched = dir_matches_pattern(path, options);
-                let has_content = if let Some(children) = all_children.get(&entry.path) {
-                    let mut probe_stats = (0u32, 0u32);
-                    display_virtual_entries(
-                        &mut io::sink(),
-                        children,
-                        all_children,
-                        options,
-                        &mut probe_stats,
-                        &[],
-                        depth + 1,
-                        icon_manager,
-                        child_matched,
-                    )?
-                } else {
-                    false
-                };
+                let has_content =
+                    if let Some(children) = virtual_children(entry, all_children, options) {
+                        let mut probe_stats = (0u32, 0u32);
+                        display_virtual_entries(
+                            &mut io::sink(),
+                            children,
+                            all_children,
+                            options,
+                            &mut probe_stats,
+                            &[],
+                            depth + 1,
+                            icon_manager,
+                            child_matched,
+                        )?
+                    } else {
+                        false
+                    };
                 Ok(has_content || child_matched)
             } else {
                 let should_skip = should_skip_virtual_entry(entry, options, parent_matched)?;
@@ -869,7 +895,7 @@ fn display_virtual_entries<W: Write>(
             display_virtual_entry(writer, entry, options, indent_state, is_last, icon_manager)?;
             found_content = true;
 
-            if let Some(children) = all_children.get(&entry.path) {
+            if let Some(children) = virtual_children(entry, all_children, options) {
                 let mut new_indent_state = indent_state.to_vec();
                 new_indent_state.push(!is_last);
                 display_virtual_entries(
@@ -937,8 +963,14 @@ fn display_virtual_entry<W: Write>(
     // Add icon if enabled
     if options.icons {
         let path = Path::new(&entry.path);
-        let icon = icon_manager.get_icon_for_path(path);
+        let icon = icon_manager.get_icon_for_entry(path, entry.is_dir);
         display_name = format!("{icon} {display_name}");
+    }
+
+    // Colorize the name before metadata is attached, so the size and classify
+    // markers stay outside the escape sequence (matches format_entry_line).
+    if !options.no_color && options.color {
+        display_name = colorize_virtual_path(Path::new(&entry.path), entry.is_dir, &display_name);
     }
 
     // Add file type indicator
@@ -958,10 +990,7 @@ fn display_virtual_entry<W: Write>(
         }
     }
 
-    // Apply colorization (simplified for virtual entries)
-    let colored_name = display_name;
-
-    writeln!(writer, "{prefix}{colored_name}")?;
+    writeln!(writer, "{prefix}{display_name}")?;
     Ok(())
 }
 

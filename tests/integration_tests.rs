@@ -416,9 +416,36 @@ fn test_ascii_mode() {
         .stdout
         .clone();
 
-    // ASCII mode should use | and ` instead of Unicode box chars
     let output_str = String::from_utf8_lossy(&output);
-    assert!(output_str.contains("|") || output_str.contains("`") || output_str.contains("+"));
+
+    assert!(
+        !output_str.contains('\u{251c}')
+            && !output_str.contains('\u{2514}')
+            && !output_str.contains('\u{2502}'),
+        "-A must not emit Unicode box-drawing characters:\n{output_str}"
+    );
+
+    // Only the final child of a level gets the corner connector; the rest get
+    // the tee. Asserting that split -- rather than "some connector appears" --
+    // is what catches the two glyphs being swapped.
+    let top_level: Vec<&str> = output_str
+        .lines()
+        .filter(|l| l.starts_with("|-- ") || l.starts_with("`-- "))
+        .collect();
+    assert!(
+        top_level.len() > 1,
+        "fixture should produce several top-level entries:\n{output_str}"
+    );
+
+    let (last, rest) = top_level.split_last().unwrap();
+    assert!(
+        last.starts_with("`-- "),
+        "last entry should use the corner connector, got {last:?}"
+    );
+    assert!(
+        rest.iter().all(|l| l.starts_with("|-- ")),
+        "only the last entry should use the corner connector:\n{output_str}"
+    );
 }
 
 #[test]
@@ -576,6 +603,97 @@ fn test_fromfile_basic() {
     assert!(output_contains(&output, "src"));
     assert!(output_contains(&output, "main.rs"));
     assert!(output_contains(&output, "tests"));
+}
+
+#[test]
+fn test_fromfile_color_outputs_ansi_codes() {
+    let simple_paths = "src/\nsrc/main.rs\narchive.zip\nlogo.png\n";
+
+    let output = cmd()
+        .args(["--fromfile", "--color", "--noreport", "."])
+        .write_stdin(simple_paths)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let stdout = String::from_utf8_lossy(&output).to_string();
+
+    // Each type gets the same colour the filesystem renderer uses.
+    assert!(
+        stdout.contains("\x1B[1;34msrc\x1B[0m"),
+        "directories should be blue+bold under --fromfile --color, got: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\x1B[31marchive.zip\x1B[0m"),
+        "archives should be red under --fromfile --color, got: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\x1B[33mlogo.png\x1B[0m"),
+        "images should be yellow under --fromfile --color, got: {stdout:?}"
+    );
+}
+
+#[test]
+fn test_fromfile_no_color_overrides_color() {
+    let simple_paths = "src/\nsrc/main.rs\narchive.zip\nlogo.png\n";
+
+    let run = |args: &[&str]| -> String {
+        let output = cmd()
+            .args(args)
+            .write_stdin(simple_paths)
+            .assert()
+            .success()
+            .get_output()
+            .stdout
+            .clone();
+        String::from_utf8_lossy(&output).to_string()
+    };
+
+    // Differential: asserting only the *absence* of ANSI would have passed
+    // before #68 was fixed, when the virtual renderer never colorized at all.
+    // Pinning both sides makes this a test of precedence rather than emptiness.
+    let colored = run(&["--fromfile", "--color", "--noreport", "."]);
+    let overridden = run(&["--fromfile", "--color", "--no-color", "--noreport", "."]);
+
+    assert!(
+        colored.contains('\x1B'),
+        "--color alone should emit ANSI under --fromfile, got: {colored:?}"
+    );
+    assert!(
+        !overridden.contains('\x1B'),
+        "--no-color should override --color under --fromfile, got: {overridden:?}"
+    );
+}
+
+#[test]
+fn test_fromfile_color_excludes_size_and_classify() {
+    // tar-style listing so entries carry sizes
+    let tar_listing = "drwxr-xr-x user/group 0 2023-01-01 12:00 src\n\
+                       -rw-r--r-- user/group 123 2023-01-01 12:00 archive.zip\n";
+
+    let output = cmd()
+        .args(["--fromfile", "--color", "-s", "-F", "--noreport", "."])
+        .write_stdin(tar_listing)
+        .assert()
+        .success()
+        .get_output()
+        .stdout
+        .clone();
+
+    let stdout = String::from_utf8_lossy(&output).to_string();
+
+    // The colour span must wrap the name only; [size] and the classify '/'
+    // sit outside it, as they do in filesystem mode.
+    assert!(
+        stdout.contains("\x1B[31marchive.zip\x1B[0m"),
+        "size prefix must stay outside the colour span, got: {stdout:?}"
+    );
+    assert!(
+        stdout.contains("\x1B[1;34msrc\x1B[0m/"),
+        "classify indicator must stay outside the colour span, got: {stdout:?}"
+    );
 }
 
 #[test]

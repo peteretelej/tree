@@ -260,6 +260,32 @@ fn test_list_directory_with_permissions() {
     assert!(result.is_ok());
 }
 
+/// A symlink to a directory must draw the directory icon. `entry.metadata()`
+/// does not traverse symlinks, so deriving the type from it reports the entry
+/// as neither file nor dir and silently falls through to the file icon.
+#[cfg(unix)]
+#[test]
+fn test_icons_follow_symlink_to_directory() {
+    let temp_dir = tempdir().unwrap();
+    let root = temp_dir.path();
+    fs::create_dir(root.join("realdir")).unwrap();
+    std::os::unix::fs::symlink(root.join("realdir"), root.join("linkdir")).unwrap();
+
+    let mut options = create_default_options();
+    options.icons = true;
+
+    let output = list_directory_as_string(root, &options).unwrap();
+    let link_line = output
+        .lines()
+        .find(|l| l.contains("linkdir"))
+        .unwrap_or_else(|| panic!("no line for linkdir in:\n{output}"));
+
+    assert!(
+        link_line.contains('\u{1F4C1}'),
+        "symlink to a directory should use the directory icon, got {link_line:?}"
+    );
+}
+
 #[test]
 fn test_list_directory_with_file_limit() {
     let temp_dir = create_test_directory();
@@ -1093,7 +1119,7 @@ fn test_prune_correct_last_connector() {
     let lines: Vec<&str> = output.lines().collect();
     let keep_line = lines.iter().find(|l| l.contains("keep")).unwrap();
     assert!(
-        keep_line.contains("\u{2514}") || keep_line.contains("+---"),
+        keep_line.contains("\u{2514}"),
         "Last surviving entry should use last-item connector"
     );
 }
@@ -1335,8 +1361,29 @@ fn test_virtual_tree_display_options(#[case] option_name: &str) {
 
     match option_name {
         "icons" => {
-            assert!(output.contains("dir1"), "Should contain dir1");
-            assert!(output.contains("file1.rs"), "Should contain file1.rs");
+            // Assert the glyph, not the filename: a name-only assertion passes
+            // with icons off, or with every entry given the wrong icon.
+            let line_for = |name: &str| {
+                output
+                    .lines()
+                    .find(|l| l.ends_with(name))
+                    .unwrap_or_else(|| panic!("no line ending in {name:?} in:\n{output}"))
+            };
+            assert!(
+                line_for("dir1").contains('\u{1F4C1}'),
+                "virtual directories should use the directory icon, got: {:?}",
+                line_for("dir1")
+            );
+            assert!(
+                line_for("sub").contains('\u{1F4C1}'),
+                "nested virtual directories should use the directory icon, got: {:?}",
+                line_for("sub")
+            );
+            assert!(
+                !line_for("file1.rs").contains('\u{1F4C1}'),
+                "files should not use the directory icon, got: {:?}",
+                line_for("file1.rs")
+            );
         }
         "classify" => {
             assert!(output.contains("dir1/"), "Dirs should get trailing /");
