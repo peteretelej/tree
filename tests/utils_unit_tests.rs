@@ -39,7 +39,7 @@ fn test_is_broken_pipe_error_direct() {
 fn test_is_broken_pipe_error_chain(#[case] inner_kind: ErrorKind, #[case] expected: bool) {
     let inner = Error::new(inner_kind, "inner error");
     let wrapped = WrappedError { inner };
-    let outer = Error::new(ErrorKind::Other, wrapped);
+    let outer = Error::other(wrapped);
     assert_eq!(is_broken_pipe_error(&outer), expected);
 }
 

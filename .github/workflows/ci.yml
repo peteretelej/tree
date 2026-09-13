@@ -8,7 +8,6 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: "-D warnings"
 
 permissions:
   contents: read
@@ -32,7 +31,7 @@ jobs:
         run: cargo fmt --check
 
       - name: Run clippy
-        run: cargo clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
   test:
     name: Test
@@ -48,7 +47,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Run tests
-        run: cargo test --verbose
+        run: cargo test --all-targets --all-features --locked --verbose
 
   coverage:
     name: Coverage
@@ -98,7 +97,6 @@ jobs:
 
   cross-platform:
     name: Test on ${{ matrix.os }}
-    if: github.event_name == 'push'
     needs: test
     runs-on: ${{ matrix.os }}
     strategy:
@@ -116,4 +114,4 @@ jobs:
           prefix-key: ${{ matrix.os }}
 
       - name: Run tests
-        run: cargo test --verbose
+        run: cargo test --all-targets --all-features --locked --verbose

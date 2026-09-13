@@ -334,11 +334,12 @@ mod tests {
 
     #[test]
     fn case_sensitivity_matches_platform() {
-        if cfg!(any(target_os = "macos", target_os = "windows")) {
-            assert!(!MATCH_OPTIONS.case_sensitive);
-        } else {
-            assert!(MATCH_OPTIONS.case_sensitive);
-        }
+        let pattern = Pattern::new("README").unwrap();
+        let matches_lowercase = pattern.matches_path_with(Path::new("readme"), MATCH_OPTIONS);
+        assert_eq!(
+            matches_lowercase,
+            cfg!(any(target_os = "macos", target_os = "windows"))
+        );
     }
 
     #[test]

@@ -31,6 +31,3 @@ tempfile = "3.2"
 [[bin]]
 name = "tree"
 path = "src/main.rs"
-
-[target.'cfg(windows)']
-rustflags = ["-C", "target-feature=+crt-static"]

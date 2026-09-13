@@ -281,10 +281,11 @@ fn has_pattern_filter(options: &TreeOptions) -> bool {
 }
 
 fn should_skip_dir_recursion(path: &Path, depth: usize, options: &TreeOptions) -> bool {
-    if let Some(max_level) = options.level {
-        if (depth + 1) >= max_level as usize {
-            return true;
-        }
+    if options
+        .level
+        .is_some_and(|max_level| (depth + 1) >= max_level as usize)
+    {
+        return true;
     }
     if let Some(limit) = options.file_limit {
         match fs::read_dir(path) {
@@ -824,10 +825,11 @@ fn display_virtual_entries<W: Write>(
     icon_manager: &IconManager,
     parent_matched: bool,
 ) -> std::io::Result<bool> {
-    if let Some(max_level) = options.level {
-        if depth >= max_level as usize {
-            return Ok(false);
-        }
+    if options
+        .level
+        .is_some_and(|max_level| depth >= max_level as usize)
+    {
+        return Ok(false);
     }
 
     let prune_mode = options.prune && has_pattern_filter(options) && !options.dir_only;

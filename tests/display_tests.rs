@@ -8,7 +8,7 @@ where
     F: FnOnce(&fs::DirEntry) -> R,
 {
     if let Ok(entries) = fs::read_dir(".") {
-        for entry in entries.flatten() {
+        if let Some(entry) = entries.flatten().next() {
             return Some(f(&entry));
         }
     }

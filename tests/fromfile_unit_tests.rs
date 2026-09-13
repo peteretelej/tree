@@ -307,10 +307,9 @@ fn test_normalize_path(#[case] input: &str, #[case] expected: &str) {
 
 #[test]
 fn test_parsers_strip_trailing_slash_from_directories() {
-    let cases: Vec<(
-        &str,
-        fn(&str) -> Option<rust_tree::rust_tree::fromfile::FileEntry>,
-    )> = vec![
+    type Parser = fn(&str) -> Option<rust_tree::rust_tree::fromfile::FileEntry>;
+
+    let cases: Vec<(&str, Parser)> = vec![
         (
             "drwxr-xr-x user/group        0 2025-07-26 21:18 testdir/",
             parse_tar_verbose_line,

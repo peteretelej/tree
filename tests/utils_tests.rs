@@ -122,7 +122,7 @@ fn test_is_broken_pipe_error_false_cases() {
 fn test_is_broken_pipe_error_with_source() {
     // Test error with source chain
     let source_error = Error::new(ErrorKind::BrokenPipe, "source broken pipe");
-    let wrapper_error = Error::new(ErrorKind::Other, "wrapper error");
+    let wrapper_error = Error::other("wrapper error");
 
     // Test the source error directly
     assert!(is_broken_pipe_error(&source_error));
@@ -150,7 +150,7 @@ fn test_bytes_to_human_readable_consistency() {
 #[test]
 fn test_bytes_to_human_readable_monotonic() {
     // Test that larger values don't result in smaller formatted values (when comparing same units)
-    let sizes = vec![
+    let sizes = [
         1024, // 1.0 KB
         2048, // 2.0 KB
         3072, // 3.0 KB
