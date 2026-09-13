@@ -5,6 +5,7 @@ echo "Running pre-push checks..."
 
 # Match the CI environment.
 export CARGO_TERM_COLOR=always
+export RUSTFLAGS="-D warnings"
 
 echo "→ Running cargo fmt..."
 if ! cargo fmt --check; then
@@ -15,7 +16,7 @@ if ! cargo fmt --check; then
 fi
 
 echo "→ Running clippy..."
-if ! cargo clippy --all-targets --all-features -- -D warnings; then
+if ! cargo clippy --locked --all-targets --all-features -- -D warnings; then
     echo ""
     echo "❌ Clippy failed! To fix issues automatically, run:"
     echo "   cargo clippy --fix --all-targets --all-features --allow-dirty --allow-staged -- -D warnings"
@@ -26,6 +27,13 @@ echo "→ Running tests..."
 if ! cargo test --all-targets --all-features --locked --verbose; then
     echo ""
     echo "❌ Tests failed! Fix the failing tests and try again."
+    exit 1
+fi
+
+echo "→ Running doctests..."
+if ! cargo test --doc --all-features --locked --verbose; then
+    echo ""
+    echo "❌ Doctests failed! Fix the failing documentation examples and try again."
     exit 1
 fi
 
