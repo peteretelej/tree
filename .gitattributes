@@ -2,6 +2,7 @@
 *.rs text eol=lf
 Cargo.toml text eol=lf
 Cargo.lock text eol=lf
+scripts/pre-push text eol=lf
 
 # Declare files that will always have CRLF line endings on checkout
 *.bat text eol=crlf

@@ -1,19 +1,10 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 echo "Running pre-push checks..."
 
-# Set environment variables like CI
+# Match the CI environment.
 export CARGO_TERM_COLOR=always
-export RUSTFLAGS="-D warnings"
-
-echo "→ Running clippy..."
-if ! cargo clippy; then
-    echo ""
-    echo "❌ Clippy failed! To fix issues automatically, run:"
-    echo "   cargo clippy --fix"
-    exit 1
-fi
 
 echo "→ Running cargo fmt..."
 if ! cargo fmt --check; then
@@ -23,8 +14,16 @@ if ! cargo fmt --check; then
     exit 1
 fi
 
+echo "→ Running clippy..."
+if ! cargo clippy --all-targets --all-features -- -D warnings; then
+    echo ""
+    echo "❌ Clippy failed! To fix issues automatically, run:"
+    echo "   cargo clippy --fix --all-targets --all-features --allow-dirty --allow-staged -- -D warnings"
+    exit 1
+fi
+
 echo "→ Running tests..."
-if ! cargo test --verbose; then
+if ! cargo test --all-targets --all-features --locked --verbose; then
     echo ""
     echo "❌ Tests failed! Fix the failing tests and try again."
     exit 1
