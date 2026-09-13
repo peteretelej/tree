@@ -38,6 +38,8 @@ When reporting bugs, please include:
 - Any error messages
 - Your environment (OS, terminal)
 
+For antivirus reports, include the Tree version, operating system, affected file's SHA-256, antivirus product and detection name, and a VirusTotal report link when available.
+
 ## Contributing
 
 Tree CLI is open source, and we welcome contributions! See our [contributing guidelines](https://github.com/peteretelej/tree#contributing) for details on how to contribute.

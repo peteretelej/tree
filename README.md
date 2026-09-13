@@ -3,6 +3,7 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/peteretelej/tree)](https://github.com/peteretelej/tree/releases)
 [![Rust Crate](https://img.shields.io/crates/v/rust_tree.svg)](https://crates.io/crates/rust_tree)
 [![CI](https://github.com/peteretelej/tree/actions/workflows/ci.yml/badge.svg)](https://github.com/peteretelej/tree/actions/workflows/ci.yml)
+[![VirusTotal monitoring](https://github.com/peteretelej/tree/actions/workflows/virustotal.yml/badge.svg)](https://github.com/peteretelej/tree/actions/workflows/virustotal.yml)
 [![codecov](https://codecov.io/gh/peteretelej/tree/graph/badge.svg)](https://codecov.io/gh/peteretelej/tree)
 [![MIT License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/peteretelej/tree/blob/main/LICENSE)
 

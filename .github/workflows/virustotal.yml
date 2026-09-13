@@ -1,0 +1,242 @@
+name: VirusTotal monitoring
+
+on:
+  workflow_run:
+    workflows: [Release]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to scan
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: virustotal-${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.workflow_run.head_branch }}
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.event.workflow_run.head_branch }}
+      VT_API_KEY: ${{ secrets.VT_API_KEY }}
+
+    steps:
+      - name: Validate release
+        env:
+          RELEASE_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_run" && "$RELEASE_CONCLUSION" != "success" ]]; then
+            echo "The Release workflow did not succeed; there are no complete artifacts to monitor."
+            exit 1
+          fi
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid release tag: $RELEASE_TAG"
+            exit 1
+          fi
+          if [[ -z "$VT_API_KEY" ]]; then
+            echo "The VT_API_KEY repository secret is not configured."
+            exit 1
+          fi
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null
+
+      - name: Download release executables
+        run: |
+          mkdir -p release-assets scan-targets
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --dir release-assets
+
+          for platform in Linux-amd64 Linux-arm64 macOS-amd64 macOS-arm64; do
+            archive="release-assets/tree-${RELEASE_TAG}-${platform}.tar.gz"
+            extract_dir="scan-targets/${platform}"
+            mkdir -p "$extract_dir"
+            tar -xzf "$archive" -C "$extract_dir"
+            binary="$(find "$extract_dir" -type f -name tree -print -quit)"
+            if [[ -z "$binary" ]]; then
+              echo "No tree executable found in $archive"
+              exit 1
+            fi
+            mv "$binary" "scan-targets/tree-${RELEASE_TAG}-${platform}"
+          done
+
+          for platform in Windows-64bit Windows-32bit Windows-arm64; do
+            cp \
+              "release-assets/tree-${RELEASE_TAG}_${platform}.exe" \
+              "scan-targets/tree-${RELEASE_TAG}-${platform}.exe"
+          done
+
+      - name: Submit and monitor executables
+        id: scan
+        shell: bash
+        run: |
+          python <<'PY'
+          import hashlib
+          import json
+          import os
+          import random
+          import time
+          import urllib.error
+          import urllib.request
+          import uuid
+          from pathlib import Path
+
+          API_ROOT = "https://www.virustotal.com/api/v3"
+          RETRYABLE_HTTP = {429, 500, 502, 503, 504}
+          MIN_REQUEST_INTERVAL = 16.0
+          MAX_RETRIES = 5
+          ANALYSIS_TIMEOUT = 30 * 60
+          api_key = os.environ["VT_API_KEY"]
+          last_request_at = 0.0
+
+          def request(method, url, *, body=None, content_type=None):
+              global last_request_at
+              for attempt in range(MAX_RETRIES + 1):
+                  wait = MIN_REQUEST_INTERVAL - (time.monotonic() - last_request_at)
+                  if wait > 0:
+                      time.sleep(wait)
+                  headers = {"x-apikey": api_key, "accept": "application/json"}
+                  if content_type:
+                      headers["content-type"] = content_type
+                  req = urllib.request.Request(url, data=body, headers=headers, method=method)
+                  try:
+                      last_request_at = time.monotonic()
+                      with urllib.request.urlopen(req, timeout=90) as response:
+                          return json.load(response)
+                  except urllib.error.HTTPError as error:
+                      error_body = error.read().decode("utf-8", errors="replace")
+                      try:
+                          error_code = json.loads(error_body).get("error", {}).get("code")
+                      except json.JSONDecodeError:
+                          error_code = None
+                      retryable = error.code in RETRYABLE_HTTP or error_code == "NotAvailableYet"
+                      if not retryable or attempt == MAX_RETRIES:
+                          raise RuntimeError(
+                              f"VirusTotal returned HTTP {error.code}: {error_body[:500]}"
+                          ) from error
+                      retry_after = error.headers.get("Retry-After")
+                      delay = float(retry_after) if retry_after and retry_after.isdigit() else min(120, 2 ** attempt * 5)
+                  except (TimeoutError, urllib.error.URLError) as error:
+                      if attempt == MAX_RETRIES:
+                          raise RuntimeError(f"VirusTotal request failed: {error}") from error
+                      delay = min(120, 2 ** attempt * 5)
+                  time.sleep(delay + random.uniform(0, 2))
+              raise RuntimeError("VirusTotal retry loop ended unexpectedly")
+
+          def upload(path):
+              boundary = uuid.uuid4().hex
+              data = path.read_bytes()
+              body = (
+                  f"--{boundary}\r\n"
+                  f'Content-Disposition: form-data; name="file"; filename="{path.name}"\r\n'
+                  "Content-Type: application/octet-stream\r\n\r\n"
+              ).encode() + data + f"\r\n--{boundary}--\r\n".encode()
+              response = request(
+                  "POST",
+                  f"{API_ROOT}/files",
+                  body=body,
+                  content_type=f"multipart/form-data; boundary={boundary}",
+              )
+              return response["data"]["id"]
+
+          def await_analysis(analysis_id):
+              deadline = time.monotonic() + ANALYSIS_TIMEOUT
+              while time.monotonic() < deadline:
+                  response = request("GET", f"{API_ROOT}/analyses/{analysis_id}")
+                  attributes = response["data"]["attributes"]
+                  if attributes["status"] == "completed":
+                      return attributes
+              raise RuntimeError("VirusTotal analysis did not complete within 30 minutes")
+
+          def escape(value):
+              return str(value).replace("|", "\\|").replace("\n", " ")
+
+          results = []
+          detections = 0
+          errors = 0
+
+          for path in sorted(Path("scan-targets").glob("tree-*")):
+              sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+              report_url = f"https://www.virustotal.com/gui/file/{sha256}"
+              try:
+                  analysis = await_analysis(upload(path))
+                  stats = analysis["stats"]
+                  malicious = int(stats.get("malicious", 0))
+                  suspicious = int(stats.get("suspicious", 0))
+                  verdict = "clean"
+                  if malicious or suspicious:
+                      verdict = f"detected ({malicious} malicious, {suspicious} suspicious)"
+                      detections += 1
+                  engines = sorted(
+                      result["engine_name"]
+                      for result in analysis.get("results", {}).values()
+                      if result.get("category") in {"malicious", "suspicious"}
+                  )
+                  results.append((path.name, sha256, verdict, report_url, ", ".join(engines)))
+              except Exception as error:
+                  errors += 1
+                  results.append((path.name, sha256, f"error: {error}", report_url, ""))
+
+          lines = [
+              "<!-- virustotal-monitoring:start -->",
+              "## VirusTotal monitoring",
+              "",
+              "VirusTotal is an independent, non-blocking monitor. A clean result is not a guarantee that a file is safe.",
+              "",
+              "| Executable | SHA-256 | Result | Report |",
+              "|---|---|---|---|",
+          ]
+          for name, sha256, verdict, report_url, engines in results:
+              result_text = escape(verdict)
+              if engines:
+                  result_text += f" — {escape(engines)}"
+              lines.append(f"| `{escape(name)}` | `{sha256}` | {result_text} | [View]({report_url}) |")
+          lines += ["", "<!-- virustotal-monitoring:end -->", ""]
+          markdown = "\n".join(lines)
+          Path("virustotal-results.md").write_text(markdown, encoding="utf-8")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write(markdown)
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"detections={detections}\n")
+              output.write(f"errors={errors}\n")
+          PY
+
+      - name: Update release notes
+        if: always() && steps.scan.outcome == 'success'
+        run: |
+          gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > release-body.md
+          python <<'PY'
+          from pathlib import Path
+
+          start = "<!-- virustotal-monitoring:start -->"
+          end = "<!-- virustotal-monitoring:end -->"
+          body = Path("release-body.md").read_text(encoding="utf-8")
+          results = Path("virustotal-results.md").read_text(encoding="utf-8").strip()
+          if start in body and end in body:
+              before, remainder = body.split(start, 1)
+              _, after = remainder.split(end, 1)
+              body = before.rstrip() + "\n\n" + results + after
+          else:
+              body = body.rstrip() + "\n\n" + results + "\n"
+          Path("updated-release-body.md").write_text(body, encoding="utf-8")
+          PY
+          gh release edit "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --notes-file updated-release-body.md
+
+      - name: Set monitoring status
+        if: always()
+        env:
+          DETECTIONS: ${{ steps.scan.outputs.detections }}
+          ERRORS: ${{ steps.scan.outputs.errors }}
+        run: |
+          if [[ "${ERRORS:-1}" != "0" ]]; then
+            echo "VirusTotal monitoring was incomplete."
+            exit 1
+          fi
+          if [[ "${DETECTIONS:-1}" != "0" ]]; then
+            echo "VirusTotal reported one or more detections."
+            exit 1
+          fi
+          echo "VirusTotal monitoring completed without detections."
